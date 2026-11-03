@@ -1,6 +1,7 @@
-/* PrintDesk – customer order form: selected-file list, client-side checks and
-   upload with a real progress bar. Progressive enhancement: without this
-   script the form still posts normally (multipart, CSRF token in the URL). */
+/* PrintDesk – customer order form: selected-file list, step tracking, live
+   order summary, client-side checks and upload with a real progress bar.
+   Progressive enhancement: without this script the form still posts normally
+   (multipart, CSRF token in the URL). */
 (function () {
   'use strict';
 
@@ -193,16 +194,16 @@
     var total = 0;
     selected.forEach(function (f, i) {
       total += f.size;
-      var li = el('li', 'file-row cust-file cust-file-new');
-      li.appendChild(el('span', 'file-ext', extOf(f.name) || 'file'));
+      var li = el('li', 'cust-file cust-file-new');
+      li.appendChild(el('span', 'cust-file-ext', extOf(f.name) || 'file'));
       var main = el('span', 'cust-file-main');
-      var name = el('span', 'file-name', f.name);
+      var name = el('span', 'cust-file-name', f.name);
       name.title = f.name;
       main.appendChild(name);
-      main.appendChild(el('span', 'file-meta', fmtBytes(f.size)));
+      main.appendChild(el('span', 'cust-file-meta', fmtBytes(f.size)));
       li.appendChild(main);
       if (canEdit) {
-        var rm = el('button', 'btn btn-ghost btn-icon btn-sm cust-file-remove');
+        var rm = el('button', 'btn btn-ghost btn-icon cust-file-btn cust-file-remove');
         rm.type = 'button';
         rm.setAttribute('data-remove', String(i));
         rm.setAttribute('aria-label', 'Remove ' + f.name);
@@ -226,6 +227,7 @@
       else zoneTitle.textContent = 'File limit reached (' + maxFiles + ')';
     }
     if (zone) zone.classList.toggle('has-files', n > 0);
+    updateFlow();
   }
 
   input.addEventListener('change', function () {
@@ -289,9 +291,6 @@
     reveal(zone);
   });
 
-  // Files already in the input (e.g. restored by the browser).
-  if (input.files && input.files.length) addFiles(Array.prototype.slice.call(input.files));
-
   // ---------- other fields: same rules as the server ----------
   var nameInput = $('input[name=name]');
   var mobileInput = $('input[name=mobile]');
@@ -315,6 +314,13 @@
   });
   check();
 
+  // The optional email sits in a <details>: open it when the browser wants to point at it.
+  var emailMore = $('[data-email-more]');
+  if (emailInput && emailMore)
+    emailInput.addEventListener('invalid', function () {
+      emailMore.open = true;
+    });
+
   // Quantity − / + buttons.
   var qtyWrap = $('[data-qty]');
   var qty = qtyWrap && qtyWrap.querySelector('input');
@@ -325,14 +331,156 @@
       b.addEventListener('click', function () {
         var n = (parseInt(qty.value, 10) || 0) + parseInt(b.getAttribute('data-qty-step'), 10);
         qty.value = String(Math.min(100000, Math.max(1, n)));
+        updateFlow();
       });
     });
     qty.addEventListener('blur', function () {
       if (qty.value === '') return;
       var n = parseInt(qty.value, 10);
       qty.value = String(Math.min(100000, Math.max(1, n || 1)));
+      updateFlow();
     });
   }
+
+  // ---------- steps + live summary ----------
+  var STEP_KEYS = ['details', 'files', 'options', 'send'];
+  var steps = form.querySelectorAll('[data-step]');
+  var sums = {};
+  Array.prototype.forEach.call(form.querySelectorAll('[data-sum]'), function (x) {
+    sums[x.getAttribute('data-sum')] = x;
+  });
+  var sumBox = $('[data-summary]');
+  var sumLine = $('[data-sum-line]');
+  var optionsSec = $('[data-sec=options]');
+  var optionsTouched = false;
+  var flowReady = true;
+  if (sumBox) sumBox.hidden = false;
+  if (sumLine) sumLine.hidden = false;
+
+  function mobileOk() {
+    var d = mobileInput ? mobileInput.value.replace(/\D/g, '') : '';
+    return d.length >= 10 && d.length <= 15;
+  }
+  /** Text of the chosen option of a radio group or select (size, colour, sides). */
+  function chosen(name) {
+    var x = form.querySelector('input[name="' + name + '"]:checked');
+    if (x) {
+      var b = x.parentNode.querySelector('b');
+      return b ? b.textContent : x.value;
+    }
+    var sel = form.querySelector('select[name="' + name + '"]');
+    return sel ? sel.value : '';
+  }
+  function setText(node, text, missing) {
+    if (!node) return;
+    node.textContent = text;
+    node.classList.toggle('is-missing', Boolean(missing));
+  }
+
+  function updateFlow() {
+    if (!flowReady) return;
+    var done = {
+      details: Boolean(nameInput && nameInput.value.trim()) && mobileOk(),
+      files: selected.length > 0,
+    };
+    // Print options have sensible defaults: done once looked at, or once the rest is filled in.
+    done.options = optionsTouched || (done.details && done.files);
+    var current = 'send';
+    for (var i = 0; i < STEP_KEYS.length; i++) {
+      if (!done[STEP_KEYS[i]]) {
+        current = STEP_KEYS[i];
+        break;
+      }
+    }
+    Array.prototype.forEach.call(steps, function (li) {
+      var key = li.getAttribute('data-step');
+      var link = li.querySelector('a');
+      var sr = li.querySelector('[data-step-sr]');
+      li.classList.toggle('is-done', Boolean(done[key]));
+      li.classList.toggle('is-current', key === current);
+      if (link) {
+        if (key === current) link.setAttribute('aria-current', 'step');
+        else link.removeAttribute('aria-current');
+      }
+      if (sr) sr.textContent = done[key] ? ' (done)' : '';
+    });
+    ['details', 'files', 'options'].forEach(function (key) {
+      var sec = form.querySelector('[data-sec=' + key + ']');
+      if (sec) sec.classList.toggle('is-done', Boolean(done[key]));
+    });
+
+    // Summary (side card on desktop, one line above the button on phones).
+    var total = 0;
+    selected.forEach(function (f) {
+      total += f.size;
+    });
+    var n = selected.length;
+    var q = qty ? Math.max(1, parseInt(qty.value, 10) || 1) : 1;
+    var size = chosen('size');
+    var print = chosen('color_mode') + ' · ' + chosen('sides');
+    setText(sums.files, n ? plural(n, 'file') + ' · ' + fmtBytes(total) : 'Not added yet', !n);
+    setText(sums.size, size);
+    setText(sums.qty, String(q));
+    setText(sums.print, print);
+    if (sumLine) {
+      if (!n) setText(sumLine, maxFiles > 1 ? 'Add your files, then send' : 'Add your file, then send', true);
+      else setText(sumLine, plural(n, 'file') + ' · ' + size + ' · ' + q + (q === 1 ? ' copy' : ' copies') + ' · ' + chosen('color_mode'), false);
+    }
+  }
+
+  form.addEventListener('input', updateFlow);
+  form.addEventListener('change', updateFlow);
+  if (optionsSec) {
+    var touch = function () {
+      if (optionsTouched) return;
+      optionsTouched = true;
+      updateFlow();
+    };
+    optionsSec.addEventListener('focusin', touch);
+    optionsSec.addEventListener('click', touch);
+  }
+
+  // Files already in the input (e.g. restored by the browser).
+  if (input.files && input.files.length) addFiles(Array.prototype.slice.call(input.files));
+  updateFlow();
+
+  // ---------- floating send bar (phones) ----------
+  var submitBar = $('[data-submit-bar]');
+  var afterBar = submitBar && submitBar.nextElementSibling;
+  var barFrame = 0;
+  var barPad = -1;
+  function measureBar() {
+    barFrame = 0;
+    if (!submitBar || !afterBar) return;
+    // Sticky and lifted above its place in the page = floating over the form.
+    var rect = submitBar.getBoundingClientRect();
+    var gap = afterBar.getBoundingClientRect().top - rect.bottom;
+    submitBar.classList.toggle('is-stuck', gap > 28);
+    // Keep focused fields (keyboard, browser validation) clear of the floating bar.
+    var floating = window.getComputedStyle(submitBar).position === 'sticky';
+    var pad = floating ? Math.ceil(rect.height) + 24 : 0;
+    if (pad !== barPad) {
+      barPad = pad;
+      document.documentElement.style.scrollPaddingBottom = pad ? pad + 'px' : '';
+    }
+  }
+  function scheduleBar() {
+    if (!barFrame) barFrame = window.requestAnimationFrame(measureBar);
+  }
+  window.addEventListener('scroll', scheduleBar, { passive: true });
+  window.addEventListener('resize', scheduleBar);
+  measureBar();
+
+  // No floating bar while the on-screen keyboard is up (CSS limits this to touch screens).
+  var TYPING = 'input[type=text], input[type=tel], input[type=email], input[type=number], textarea';
+  form.addEventListener('focusin', function (e) {
+    if (e.target.matches && e.target.matches(TYPING)) form.classList.add('is-typing');
+    scheduleBar();
+  });
+  form.addEventListener('focusout', function () {
+    form.classList.remove('is-typing');
+    scheduleBar();
+  });
 
   // ---------- submit + upload ----------
   form.addEventListener('submit', function (e) {
@@ -615,5 +763,7 @@
     }
     reset();
     check();
+    updateFlow();
+    scheduleBar();
   });
 })();

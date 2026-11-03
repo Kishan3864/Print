@@ -1,6 +1,7 @@
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { alert, csrfField, field, icon } from '../components.js';
+import { CYCLES, formatINR, priceRupees } from '../../services/billing.js';
 
 const DM_URL = `https://ig.me/m/${config.instagram}`;
 const HOST = config.baseUrl.replace(/^https?:\/\//, '') + '/';
@@ -13,30 +14,52 @@ function aria(id, { hint = false, error = '', extra = '' } = {}) {
 
 const cmykBar = () => html`<div class="cmyk-bar au-bar" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
 
-// ---------- register ----------
-export function registerPage(res, { values = {}, errors = {} } = {}) {
+/** "You picked Pro · Yearly" summary above the real sign-up form. */
+function chosenPlan(choice) {
+  if (!choice) return '';
+  const { plan, cycle } = choice;
+  return html`<div class="au-plan">
+    <span class="au-plan-ic">${icon('check')}</span>
+    <p><b>${plan.name}</b> · ${CYCLES[cycle]} · ${formatINR(priceRupees(plan, cycle))}${cycle === 'yearly' ? ' / year' : ' / month'}<small>You can change the plan on the next step.</small></p>
+    <a class="au-plan-change" href="/#pricing">Change</a>
+  </div>`;
+}
+
+// ---------- register (real shop, or a free demo shop with demo: true) ----------
+export function registerPage(res, { values = {}, errors = {}, demo = false, choice = null, demoShop = null } = {}) {
   const v = (k) => values[k] || '';
   const e = (k) => errors[k] || '';
   const hasErrors = Object.keys(errors).length > 0;
+  const days = config.demo.trialDays;
+  const action = demo ? '/demo/register' : '/register';
 
   const text = (id, name, { type = 'text', hint = '', extra = '', attrs = '' } = {}) =>
     html`<input type="${type}" id="${id}" name="${name}" value="${type === 'password' ? '' : v(name)}" ${raw(attrs)}${aria(id, { hint: Boolean(hint), error: e(name), extra })}>`;
 
   const slugControl = html`<div class="input-group au-slug-group">
-      <span class="input-addon" id="reg-slug-host">${HOST}</span>
+      <span class="input-addon" id="reg-slug-host">${demo ? `${HOST}demo/` : HOST}</span>
       <input type="text" id="reg-slug" name="slug" value="${v('slug')}" required maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="your-shop-name" data-slug-input${aria('reg-slug', { hint: true, error: e('slug'), extra: 'reg-slug-host reg-slug-status' })}>
     </div>
     <p class="au-slug-status" id="reg-slug-status" aria-live="polite" data-slug-status></p>`;
 
   return html`<section class="auth-wrap">
-    <div class="card auth-card auth-card-wide au-card">
+    <div class="card auth-card auth-card-wide au-card${demo ? ' au-card-demo' : ''}">
       ${cmykBar()}
-      <h1>Register your shop</h1>
-      <p class="lead">Get your own order link where customers send files to print. It takes about two minutes.</p>
+      ${demo
+        ? html`<span class="au-demo-tag">${icon('sparkle')}<span>Free demo · ${days} days</span></span>
+            <h1>Create your demo shop</h1>
+            <p class="lead">Your own PrintDesk with your shop's name and link – ready right away. No payment, no approval.</p>`
+        : html`<h1>Register your shop</h1>
+            <p class="lead">Get your own order link where customers send files to print. Choose a plan and pay to activate – takes 1 minute.</p>`}
+      ${demoShop && !demo
+        ? html`<div class="au-alert">${alert('info', html`You have a demo shop (${demoShop.name}). To go live with it, <a href="/shop/billing">choose a plan in your dashboard</a> – no new account needed.`)}</div>`
+        : ''}
+      ${chosenPlan(choice)}
       ${hasErrors ? html`<div class="au-alert">${alert('danger', errors._form || 'Please fix the highlighted fields below.')}</div>` : ''}
 
-      <form method="post" action="/register" class="au-form" data-register>
+      <form method="post" action="${action}" class="au-form" data-register>
         ${csrfField(res)}
+        ${choice ? html`<input type="hidden" name="plan" value="${choice.plan.key}"><input type="hidden" name="cycle" value="${choice.cycle}">` : ''}
         <fieldset class="au-group">
           <legend>Your shop</legend>
           <div class="form-row">
@@ -48,7 +71,9 @@ export function registerPage(res, { values = {}, errors = {} } = {}) {
               label: 'Your order link',
               id: 'reg-slug',
               error: e('slug'),
-              hint: 'Customers open this link to send you files. Lowercase letters, numbers and hyphens.',
+              hint: demo
+                ? 'During the demo your link has /demo/ in it. When you go live it becomes your short link. Lowercase letters, numbers and hyphens.'
+                : 'Customers open this link to send you files. Lowercase letters, numbers and hyphens.',
               control: slugControl,
             })}
           </div>
@@ -93,11 +118,18 @@ export function registerPage(res, { values = {}, errors = {} } = {}) {
           </div>
         </fieldset>
 
-        <div class="au-approval">${alert('info', 'Your account will be active after approval by Brighton Solution.', 'shield')}</div>
-        <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading="Creating your account…">Create my account</button>
+        ${demo
+          ? html`<div class="au-approval">${alert('info', `Your demo shop runs for ${days} days. Orders placed on a demo link are for testing. Go live anytime by choosing a plan.`, 'clock')}</div>
+              <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading="Creating your demo shop…">Create my demo shop</button>`
+          : html`<div class="au-approval">${alert('info', 'Next: choose a plan and pay online (UPI, card or net banking). Your order link opens as soon as the payment is done.', 'shield')}</div>
+              <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading="Creating your account…">Continue to payment</button>`}
       </form>
     </div>
-    <p class="auth-foot">Already registered? <a href="/login">Log in</a></p>
+    <p class="auth-foot">
+      <span class="au-foot-item">Already registered? <a href="/login">Log in</a></span><span class="au-sep" aria-hidden="true"></span><span class="au-foot-item">${demo
+        ? html`Ready to go live? <a href="/register">Register your shop</a>`
+        : html`Not ready to pay? <a href="/demo/register">Try a free demo shop</a>`}</span>
+    </p>
   </section>`;
 }
 

@@ -1,10 +1,12 @@
-// Demo shop: created once at boot, wiped and re-seeded with sample orders
-// every config.demo.resetHours (see src/jobs.js). Everything here is sample data.
+// Shared sample demo shop (slug config.demo.slug): created once at boot, wiped and
+// re-seeded with sample orders every config.demo.resetHours (see src/jobs.js).
+// Personal demo shops (created at /demo/register) are only touched by
+// cleanupEndedDemos(), which deletes them some days after their demo ended.
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, now } from '../db.js';
 import { config, paths } from '../config.js';
-import { randomHex, randomToken, startOfTodayIso } from '../lib/util.js';
+import { addDays, randomHex, randomToken, startOfTodayIso, ymd } from '../lib/util.js';
 import { canTransition, PROOF_ALLOWED } from '../lib/status.js';
 import { extOf, removeStoredFile } from '../lib/uploads.js';
 import { Canvas, hexRgb } from '../lib/png.js';
@@ -430,4 +432,32 @@ export function resetDemo() {
   }
   if (shop.logo_file) removeLogoFile(shop);
   return true;
+}
+
+// ---------- personal demo shops ----------
+/**
+ * Deletes personal demo shops whose demo ended more than config.demo.keepDays
+ * ago (never the sample shop, never a shop that went live – paying sets is_demo = 0).
+ * Their orders, files, tickets, payments and notifications go with the shop row
+ * (ON DELETE CASCADE); the upload folder and logo are removed from disk. Returns the count.
+ */
+export function cleanupEndedDemos() {
+  const cutoff = addDays(ymd(), -config.demo.keepDays);
+  const ended = db
+    .prepare('SELECT * FROM shops WHERE is_demo = 1 AND slug != ? AND paid_until IS NOT NULL AND paid_until < ?')
+    .all(config.demo.slug, cutoff);
+  const del = db.prepare('DELETE FROM shops WHERE id = ? AND is_demo = 1 AND slug != ?');
+  let n = 0;
+  for (const shop of ended) {
+    if (!del.run(shop.id, config.demo.slug).changes) continue;
+    n++;
+    try {
+      fs.rmSync(path.join(paths.uploads, String(Number(shop.id))), { recursive: true, force: true });
+    } catch (err) {
+      console.warn('[demo] could not remove uploads of shop', shop.id, err.message);
+    }
+    removeLogoFile(shop);
+  }
+  if (n) console.log(`[demo] deleted ${n} ended demo shop(s)`);
+  return n;
 }

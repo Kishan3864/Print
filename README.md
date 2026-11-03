@@ -17,44 +17,14 @@ cp .env.example .env
 npm start
 ```
 
-Open http://localhost:3100 (landing page), http://localhost:3100/admin (super admin) and http://localhost:3100/demo (demo shop, sample data reset every 6 hours).
+Open http://localhost:3100 (landing + pricing), http://localhost:3100/demo (demo: sample shop, or create a free demo shop) and http://localhost:3100/admin (super admin; in production it runs on ADMIN_HOST).
 
 `npm run dev` restarts on file changes. `npm run icons` regenerates the app icons in `public/icons/`.
 
 ## Deploy on Ubuntu VPS
 
-DNS: add an **A record** `print` -> `187.127.141.107` for brightonsolution.com.
-
-```bash
-# Node.js 22 (NodeSource), build tools for better-sqlite3 (if no prebuilt binary), nginx, certbot, pm2
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs build-essential python3 git nginx certbot python3-certbot-nginx
-sudo npm install -g pm2
-
-# App code
-sudo git clone https://github.com/Kishan3864/Print.git /var/www/printdesk
-sudo chown -R $USER:$USER /var/www/printdesk
-cd /var/www/printdesk
-npm ci --omit=dev
-
-# Data folder (database + uploads), outside the code folder
-sudo mkdir -p /var/lib/printdesk
-sudo chown -R $USER:$USER /var/lib/printdesk
-
-# Config: set SESSION_SECRET (openssl rand -hex 32), ADMIN_EMAIL, ADMIN_PASSWORD, SMTP_*
-cp .env.example .env
-nano .env
-
-# Start and keep running after reboot
-pm2 start ecosystem.config.cjs && pm2 save
-pm2 startup        # run the command it prints
-
-# nginx + HTTPS
-sudo cp deploy/nginx/print.brightonsolution.com.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/print.brightonsolution.com.conf /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d print.brightonsolution.com
-```
+Safe step-by-step guide (does not touch other sites on the server): [deploy/GO-LIVE.md](deploy/GO-LIVE.md).
+Read-only server check first: `bash deploy/preflight.sh`.
 
 Update to the latest version:
 

@@ -4,7 +4,9 @@ import { config } from '../config.js';
 import { cleanLine, flash, isEmail, isMobile, slugError, slugify } from '../lib/util.js';
 import { actionLimiter, demoLimiter, loginLimiter, loginShop, logout, registerLimiter, safeNext } from '../lib/security.js';
 import { checkPassword, createShop, emailTaken, getShopByEmail, getShopBySlug, slugTaken, touchLogin } from '../services/shops.js';
-import { emailAdminNewShop } from '../services/notify.js';
+import { emailAdminNewShop, orderFormUrl } from '../services/notify.js';
+import { notifyAdmin } from '../services/notifications.js';
+import { CYCLES, getPlan, isSampleShop } from '../services/billing.js';
 import { messagePage, render } from '../views/layout.js';
 import { landingPage } from '../views/public/landing.js';
 import { demoPage } from '../views/public/demo.js';
@@ -29,12 +31,13 @@ router.get('/', (req, res) => {
 router.get('/demo', (req, res) => {
   res.locals.isDemo = true;
   const realShop = req.shop && !req.shop.is_demo ? req.shop : null;
+  const ownDemo = req.shop && req.shop.is_demo && !isSampleShop(req.shop) ? req.shop : null;
   render(res, {
     title: 'Live demo',
     variant: 'public',
     active: 'demo',
-    description: 'Try PrintDesk live: place a print order as a customer, then manage it from the shop dashboard. No sign-up needed.',
-    body: demoPage(res, { realShop }),
+    description: `Try PrintDesk live: order as a customer, manage it from the shop dashboard, or create your own free demo shop for ${config.demo.trialDays} days. No payment needed.`,
+    body: demoPage(res, { realShop, ownDemo }),
   });
 });
 
@@ -105,49 +108,94 @@ function validateRegistration(values, password, password2) {
   return errors;
 }
 
-const showRegister = (res, data = {}, status = 200) =>
+/** Plan picked on the pricing section (?plan=pro&cycle=yearly), or null. */
+function readChoice(src) {
+  const plan = getPlan(String(src?.plan || ''));
+  const cycle = String(src?.cycle || '');
+  return plan && plan.active && CYCLES[cycle] ? { plan, cycle } : null;
+}
+
+const ownDemoShop = (req) => (req.shop && req.shop.is_demo && !isSampleShop(req.shop) ? req.shop : null);
+
+/** Register form for a real shop (`demo` false) or a free personal demo shop. */
+function showRegister(req, res, { demo = false, ...data } = {}, status = 200) {
+  res.locals.isDemo = false; // no "sample data" strip on sign-up forms
   render(
     res,
     {
-      title: 'Register your shop',
+      title: demo ? 'Create your demo shop' : 'Register your shop',
       variant: 'auth',
       bodyClass: 'page-register',
       scripts: ['/js/register.js'],
-      body: registerPage(res, data),
+      body: registerPage(res, { ...data, demo, demoShop: ownDemoShop(req) }),
     },
     status
   );
+}
 
-router.get('/register', (req, res) => {
-  if (req.shop && !req.shop.is_demo) return res.redirect('/shop');
-  showRegister(res);
-});
-
-router.post('/register', registerLimiter, (req, res) => {
+/**
+ * Validates and creates the shop; renders the form again on errors.
+ * Returns the new shop, or null when a response was already sent.
+ */
+function registerShop(req, res, { demo, choice = null }) {
   const values = readRegistration(req.body);
   const password = String(req.body.password ?? '');
   const password2 = String(req.body.password2 ?? '');
   const errors = validateRegistration(values, password, password2);
-  if (Object.keys(errors).length) return showRegister(res, { values, errors }, 400);
-
-  let shop;
+  if (Object.keys(errors).length) {
+    showRegister(req, res, { demo, choice, values, errors }, 400);
+    return null;
+  }
   try {
-    shop = createShop({ ...values, password });
+    return createShop({ ...values, password, demo });
   } catch (err) {
     // Lost a race with another sign-up for the same link or email.
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       const field = /email/.test(err.message) ? 'email' : 'slug';
       const msg = field === 'email' ? 'This email is already registered. Log in instead, or use another email.' : 'This link was just taken. Please choose another one.';
-      return showRegister(res, { values, errors: { [field]: msg } }, 409);
+      showRegister(req, res, { demo, choice, values, errors: { [field]: msg } }, 409);
+      return null;
     }
     throw err;
   }
+}
+
+const adminNote = (shop) => `${shop.city} · ${shop.owner_name} · ${shop.mobile} · ${shop.email}`;
+
+router.get('/register', (req, res) => {
+  if (req.shop && !req.shop.is_demo) return res.redirect('/shop');
+  showRegister(req, res, { choice: readChoice(req.query) });
+});
+
+router.post('/register', registerLimiter, (req, res) => {
+  const choice = readChoice(req.body);
+  const shop = registerShop(req, res, { demo: false, choice });
+  if (!shop) return;
 
   emailAdminNewShop(shop).catch(() => {});
+  notifyAdmin({ kind: 'info', title: `New shop registered: ${shop.name}`, body: `${adminNote(shop)} · waiting for the first payment`, link: `/admin/shops/${shop.id}` });
   touchLogin(shop.id);
   loginShop(req, shop);
-  flash(req, 'success', 'Your shop is registered. We will check your details and switch your account on soon.');
-  res.redirect('/shop');
+  flash(req, 'success', 'Your account is ready. Choose a plan and pay to activate your order link – it takes 1 minute.');
+  res.redirect(303, '/shop/billing' + (choice ? `?plan=${choice.plan.key}&cycle=${choice.cycle}` : ''));
+});
+
+// ---------- free personal demo shop (no payment, no approval) ----------
+router.get('/demo/register', (req, res) => {
+  if (ownDemoShop(req)) return res.redirect('/shop');
+  showRegister(req, res, { demo: true });
+});
+
+router.post('/demo/register', registerLimiter, (req, res) => {
+  const shop = registerShop(req, res, { demo: true });
+  if (!shop) return;
+
+  emailAdminNewShop(shop).catch(() => {});
+  notifyAdmin({ kind: 'info', title: `New demo shop: ${shop.name}`, body: `${adminNote(shop)} · free demo for ${config.demo.trialDays} days`, link: `/admin/shops/${shop.id}` });
+  touchLogin(shop.id);
+  loginShop(req, shop);
+  flash(req, 'success', `Your demo shop is ready – your customer link is ${orderFormUrl(shop)}`);
+  res.redirect(303, '/shop');
 });
 
 // Live availability check for the link name field (public/js/register.js).
@@ -161,9 +209,10 @@ router.get('/api/slug-check', actionLimiter, (req, res) => {
 const showLogin = (res, data = {}, status = 200) =>
   render(res, { title: 'Log in', variant: 'auth', bodyClass: 'page-login', body: loginPage(res, data) }, status);
 
+// Real shops and personal demo shops log in with their password; the shared sample shop never does.
 router.get('/login', (req, res) => {
   const next = safeNext(req.query.next, '');
-  if (req.shop && !req.shop.is_demo) return res.redirect(next || '/shop');
+  if (req.shop && !isSampleShop(req.shop)) return res.redirect(next || '/shop');
   showLogin(res, { next, demoSession: Boolean(req.shop) });
 });
 
@@ -172,11 +221,11 @@ router.post('/login', loginLimiter, (req, res) => {
   const password = String(req.body.password ?? '').slice(0, 200);
   const next = safeNext(req.body.next, '');
   const shop = isEmail(email) ? getShopByEmail(email) : null;
-  const usable = shop && !shop.is_demo;
+  const usable = shop && !isSampleShop(shop);
   const ok = checkPassword(password, usable ? shop.password_hash : DUMMY_HASH) && usable;
   if (!ok) {
     // 401 so the login limiter counts the failure (it skips successful responses).
-    return showLogin(res, { email, next, error: 'That email and password do not match. Please try again.', demoSession: Boolean(req.shop?.is_demo) }, 401);
+    return showLogin(res, { email, next, error: 'That email and password do not match. Please try again.', demoSession: isSampleShop(req.shop) }, 401);
   }
   loginShop(req, shop);
   touchLogin(shop.id);

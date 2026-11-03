@@ -6,6 +6,7 @@ import { logoUpload, discardUploads } from '../lib/uploads.js';
 import { clean, cleanLine, digits, flash, isHexColor } from '../lib/util.js';
 import { DEFAULT_SIZES, checkPassword, removeLogoFile, setPassword, sizeOptions, updateShopSettings } from '../services/shops.js';
 import { orderFormUrl } from '../services/notify.js';
+import { isSampleShop } from '../services/billing.js';
 import { render } from '../views/layout.js';
 import { linkView, posterView } from '../views/shop-settings/link.js';
 import { settingsView } from '../views/shop-settings/settings.js';
@@ -15,7 +16,7 @@ import { settingsView } from '../views/shop-settings/settings.js';
 
 const router = Router();
 
-const DEMO_LOCKED = 'Settings are locked in the demo – register your own shop to customise.';
+const DEMO_LOCKED = 'Settings are locked in the sample shop – create your own demo or register your shop to customise.';
 const MAX_SIZES = 30;
 const MAX_SIZE_LEN = 40;
 const MAX_ADDRESS = 240;
@@ -83,8 +84,9 @@ function showSettings(req, res, { values, errors = {}, pwErrors = {}, status = 2
   render(res, settingsView(res, { shop: req.shop, state: req.shopState, values: values || currentValues(req.shop), errors, pwErrors }), status);
 }
 
+// The shared sample shop is read-only; personal demo shops can brand themselves.
 function demoLocked(req, res, next) {
-  if (!req.shop.is_demo) return next();
+  if (!isSampleShop(req.shop)) return next();
   flash(req, 'info', DEMO_LOCKED);
   res.redirect('/shop/settings');
 }

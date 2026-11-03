@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { html } from '../lib/html.js';
-import { clean, cleanLine, clampInt, flash } from '../lib/util.js';
+import { db } from '../db.js';
+import { clean, cleanLine, clampInt, flash, startOfTodayIso, ymd } from '../lib/util.js';
 import { STATUSES, STATUS_LABEL, TABS } from '../lib/status.js';
 import { actionLimiter } from '../lib/security.js';
 import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/uploads.js';
-import { storageCapBytes } from '../services/billing.js';
+import { isSampleShop, storageCapBytes } from '../services/billing.js';
+import { listShopNotifications } from '../services/notifications.js';
 import { shopCounts, storageUsed } from '../services/shops.js';
 import {
   getOrderByNo,
@@ -55,6 +57,14 @@ function loadOrder(req, res, next) {
   next();
 }
 
+/** Orders placed since the 1st of this month (APP_TZ). */
+function ordersThisMonth(shopId) {
+  const today = ymd();
+  const tzOffset = Date.parse(today + 'T00:00:00Z') - Date.parse(startOfTodayIso());
+  const since = new Date(Date.parse(today.slice(0, 8) + '01T00:00:00Z') - tzOffset).toISOString();
+  return db.prepare('SELECT COUNT(*) AS n FROM orders WHERE shop_id = ? AND created_at >= ?').get(shopId, since).n;
+}
+
 // ---------- dashboard ----------
 router.get('/', (req, res) => {
   const shop = req.shop;
@@ -78,6 +88,9 @@ router.get('/', (req, res) => {
       pageSize: PAGE_SIZE,
       latestId: latestOrderId(shop.id),
       formUrl: orderFormUrl(shop),
+      monthCount: ordersThisMonth(shop.id),
+      updates: listShopNotifications(shop.id, 20).filter((n) => !n.read_at).slice(0, 3),
+      isSample: isSampleShop(shop),
     }),
   });
 });

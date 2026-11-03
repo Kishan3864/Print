@@ -1,6 +1,7 @@
 import { html } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { icon } from '../components.js';
+import { activePlans, formatINR } from '../../services/billing.js';
 
 const DM_URL = `https://ig.me/m/${config.instagram}`;
 const MB = (bytes) => Math.round(bytes / (1024 * 1024));
@@ -73,7 +74,7 @@ function features() {
 
 // ---------- how it works ----------
 const STEPS = [
-  ['Register your shop', 'Fill in a short form. We check your details and switch your account on.'],
+  ['Register and choose a plan', 'Fill in a short form and pay online. Your order link opens in about a minute.'],
   ['Share your link and QR code', 'Put the QR code at your counter and share the link on WhatsApp and Instagram.'],
   ['Customers upload, you send a proof', 'New orders show up on your dashboard. Upload the proof from the order.'],
   ['They approve, you print', 'Print the approved file, mark it ready and send the ready message.'],
@@ -125,6 +126,74 @@ function audience() {
   </section>`;
 }
 
+// ---------- pricing ----------
+const PLAN_FEATURES = ['Unlimited orders', 'Order link + QR code', 'Customer proof approval', 'WhatsApp ready messages', 'Help & support'];
+
+/** Yearly saving against 12 monthly payments: { rupees, pct } (0 when there is none). */
+function yearlySaving(plan) {
+  const full = plan.monthly * 12;
+  const rupees = Math.max(0, full - plan.yearly);
+  return { rupees, pct: full > 0 ? Math.round((rupees / full) * 100) : 0 };
+}
+
+// Both cycles are rendered; the Monthly/Yearly radios show one of them with CSS only.
+function planCard(plan) {
+  const save = yearlySaving(plan);
+  const cta = (cycle) =>
+    html`<a class="btn ${plan.popular ? 'btn-primary' : 'btn-secondary'} btn-lg btn-block lp-plan-cta lp-only-${cycle}" href="/register?plan=${plan.key}&cycle=${cycle}"><span>Start now</span>${icon('arrowRight')}<span class="sr-only"> with ${plan.name} (${cycle})</span></a>`;
+  return html`<li class="lp-plan${plan.popular ? ' is-popular' : ''}">
+    <div class="lp-plan-top">
+      <h3>${plan.name}</h3>
+      ${plan.popular ? html`<span class="lp-plan-tag">Most popular</span>` : ''}
+    </div>
+    <div class="lp-price lp-only-monthly">
+      <p class="lp-price-main"><b>${formatINR(plan.monthly)}</b><span>/ month</span></p>
+      <p class="lp-price-sub">Billed every month</p>
+    </div>
+    <div class="lp-price lp-only-yearly">
+      <p class="lp-price-main"><b>${formatINR(plan.yearly)}</b><span>/ year</span></p>
+      <p class="lp-price-sub">${save.rupees ? html`About ${formatINR(Math.round(plan.yearly / 12))}/month · <span class="lp-save">you save ${formatINR(save.rupees)}</span>` : 'Billed once a year'}</p>
+    </div>
+    <ul class="lp-plan-list">
+      <li class="lp-plan-storage">${icon('check')}<span><b>${plan.storageGb} GB</b> file storage</span></li>
+      ${PLAN_FEATURES.map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}
+    </ul>
+    ${cta('monthly')}${cta('yearly')}
+  </li>`;
+}
+
+function pricing() {
+  const plans = activePlans();
+  const bestPct = Math.max(0, ...plans.map((p) => yearlySaving(p).pct));
+  return html`<section class="lp-section lp-sep" id="pricing" aria-labelledby="pricing-title">
+    <div class="container">
+      <div class="lp-head">
+        <h2 id="pricing-title">Simple pricing</h2>
+        <p>Pay monthly or yearly. Every plan has every feature – plans differ only in file storage.</p>
+      </div>
+      ${plans.length
+        ? html`<div class="lp-pricing">
+            <input class="lp-cycle-input" type="radio" name="lp-cycle" id="lp-cycle-monthly" value="monthly" checked>
+            <input class="lp-cycle-input" type="radio" name="lp-cycle" id="lp-cycle-yearly" value="yearly">
+            <div class="lp-cycle">
+              <label for="lp-cycle-monthly" class="lp-cycle-m">Monthly</label>
+              <label for="lp-cycle-yearly" class="lp-cycle-y">Yearly${bestPct ? html` <span class="lp-cycle-save">save ${bestPct}%</span>` : ''}</label>
+            </div>
+            <ul class="lp-plans">${plans.map(planCard)}</ul>
+          </div>`
+        : html`<p class="lp-plans-empty">New plans are on the way. DM us on Instagram at <a href="${DM_URL}" target="_blank" rel="noopener">@${config.instagram}</a> for the current price.</p>`}
+      <div class="lp-pricing-foot">
+        <div class="lp-try">
+          <span class="lp-try-ic">${icon('sparkle')}</span>
+          <p><b>Try free first:</b> create a demo shop – no payment, ready in a minute.</p>
+          <a class="btn btn-secondary" href="/demo"><span>Create a demo shop</span>${icon('arrowRight')}</a>
+        </div>
+        <p class="lp-pay-note">${icon('shield')}<span>Prices in rupees. Pay securely by UPI, card or net banking through Razorpay. Renew anytime.</span></p>
+      </div>
+    </div>
+  </section>`;
+}
+
 // ---------- FAQ ----------
 function faq() {
   const items = [
@@ -137,8 +206,10 @@ function faq() {
     ['How long are files kept?', html`Files are deleted automatically after 15 days by default. You can change this in Settings. Order details and history stay.`],
     ['Can I use my own logo and colour?', html`Yes. Your order page shows your shop name, logo and brand colour.`],
     ['Does it work on mobile?', html`Yes. Customers order from any phone, and you can run the whole counter from yours. PrintDesk also installs like an app, straight from the browser.`],
-    ['How do I get started?', html`<a href="/register">Register your shop</a> with a short form. Brighton Solution checks your details and approves your account. Then share your link and start taking orders. Want to look around first? <a href="/demo">Try the live demo</a>.`],
-    ['What does it cost?', html`Plans depend on your shop. Send us a DM on Instagram at <a href="${DM_URL}" target="_blank" rel="noopener">@${config.instagram}</a> and we will share the details.`],
+    ['How do I get started?', html`<a href="/register">Register your shop</a> with a short form, choose a plan and pay online. Your order link opens right away – share it and start taking orders.`],
+    ['How do I pay?', html`Online through Razorpay with UPI, debit or credit card, or net banking. Pay monthly or yearly and renew anytime from your dashboard. See the <a href="/#pricing">plans and prices</a>.`],
+    ['What happens when my plan ends?', html`Your order link stops taking new orders and your dashboard asks you to renew. Your orders and settings are kept – renew and the link opens again straight away. We remind you before the end date.`],
+    ['Can I try before paying?', html`Yes. <a href="/demo/register">Create a free demo shop</a> – no payment and no approval. It runs for ${config.demo.trialDays} days with your own shop name and link. Go live anytime by choosing a plan.`],
   ];
   return html`<section class="lp-section lp-alt" id="faq" aria-labelledby="faq-title">
     <div class="container">
@@ -164,7 +235,7 @@ function ctaBand() {
     <div class="container">
       <div class="lp-final-card">
         <h2 id="final-title">See it working in 2 minutes</h2>
-        <p>Try the demo as a customer and as the shop. No sign-up needed.</p>
+        <p>Try the demo as a customer and as the shop, or create your own free demo shop. No payment needed.</p>
         <div class="lp-cta">
           <a class="btn btn-primary btn-lg" href="/demo"><span>Try live demo</span>${icon('arrowRight')}</a>
           <a class="btn btn-secondary btn-lg" href="/register">Register your shop</a>
@@ -175,5 +246,5 @@ function ctaBand() {
 }
 
 export function landingPage() {
-  return html`<div class="lp">${hero()}${features()}${howItWorks()}${audience()}${faq()}${ctaBand()}</div>`;
+  return html`<div class="lp">${hero()}${features()}${howItWorks()}${audience()}${pricing()}${faq()}${ctaBand()}</div>`;
 }
