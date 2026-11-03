@@ -1,0 +1,151 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import express from 'express';
+import helmet from 'helmet';
+import cookieSession from 'cookie-session';
+import { config, paths, ROOT } from './config.js';
+import { html } from './lib/html.js';
+import { csrfProtect, loadSession } from './lib/security.js';
+import { brandForDark, isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
+import { getShopBySlug, logoPath } from './services/shops.js';
+import { messagePage } from './views/layout.js';
+import publicRoutes from './routes/public.js';
+import adminRoutes from './routes/admin.js';
+import shopRoutes from './routes/shop.js';
+import customerRoutes from './routes/customer.js';
+
+export function createApp() {
+  const app = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', config.trustProxy);
+  app.set('etag', 'weak');
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          fontSrc: ["'self'"],
+          connectSrc: ["'self'"],
+          manifestSrc: ["'self'"],
+          workerSrc: ["'self'"],
+          mediaSrc: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          objectSrc: ["'none'"],
+          ...(config.secureCookies ? { upgradeInsecureRequests: [] } : {}),
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      strictTransportSecurity: config.secureCookies ? { maxAge: 15552000, includeSubDomains: false } : false,
+      referrerPolicy: { policy: 'same-origin' },
+    })
+  );
+  app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+    next();
+  });
+
+  // ---------- static assets (no session/cookies) ----------
+  const day = 24 * 60 * 60 * 1000;
+  app.get('/sw.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.type('application/javascript').sendFile(path.join(paths.public, 'sw.js'));
+  });
+  app.get('/manifest.webmanifest', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.type('application/manifest+json').sendFile(path.join(paths.public, 'manifest.webmanifest'));
+  });
+  app.use('/fonts/jakarta', express.static(path.join(ROOT, 'node_modules/@fontsource/plus-jakarta-sans/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
+  app.use('/fonts/mono', express.static(path.join(ROOT, 'node_modules/@fontsource/jetbrains-mono/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
+  app.use(
+    express.static(paths.public, {
+      index: false,
+      maxAge: 7 * day,
+      setHeaders(res, file) {
+        if (file.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+      },
+    })
+  );
+
+  // Per-shop brand colour (keeps CSP free of inline styles).
+  app.get(`/brand/:slug(${SLUG_ROUTE}).css`, (req, res) => {
+    const shop = getShopBySlug(req.params.slug);
+    const color = shop && isHexColor(shop.brand_color) ? shop.brand_color : '#0077b6';
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    const dark = brandForDark(color);
+    res.type('text/css').send(`:root{--brand:${color};--brand-ink:${inkFor(color)}}@media (prefers-color-scheme:dark){:root{--brand:${dark};--brand-ink:${inkFor(dark)}}}`);
+  });
+
+  // Public shop logo (png/jpg/webp only, validated on upload).
+  app.get(`/logo/:slug(${SLUG_ROUTE})`, (req, res, next) => {
+    const shop = getShopBySlug(req.params.slug);
+    const file = shop && logoPath(shop);
+    if (!file || !fs.existsSync(file)) return next();
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(file);
+  });
+
+  app.get('/healthz', (req, res) => res.type('text').send('ok'));
+
+  // ---------- dynamic pages ----------
+  app.use(express.urlencoded({ extended: false, limit: '200kb', parameterLimit: 200 }));
+  app.use(
+    cookieSession({
+      name: 'pd_sess',
+      keys: [config.sessionSecret],
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: config.secureCookies,
+      maxAge: 30 * day,
+    })
+  );
+  app.use(loadSession);
+  app.use((req, res, next) => {
+    // Pages are per-user: never cache them in shared caches; logged-in pages not at all.
+    res.setHeader('Cache-Control', req.shop || res.locals.isAdmin ? 'no-store' : 'private, no-cache');
+    next();
+  });
+  app.use(csrfProtect);
+
+  app.use('/', publicRoutes);
+  app.use('/admin', adminRoutes);
+  app.use('/shop', shopRoutes);
+  app.use('/', customerRoutes);
+
+  // ---------- 404 + errors ----------
+  app.use((req, res) => {
+    messagePage(res, {
+      status: 404,
+      title: 'Page not found',
+      text: 'This link does not exist. Please check the address or ask the shop for their correct link.',
+      iconName: 'search',
+      action: html`<a class="btn btn-primary" href="/">Go to PrintDesk</a>`,
+    });
+  });
+
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    const status = err.status || err.statusCode || 500;
+    if (status >= 500) console.error('[error]', req.method, req.originalUrl, err);
+    if (res.headersSent) return;
+    const text = err.expose && typeof err.expose === 'string' ? err.expose : status === 413 ? 'That request was too large.' : status < 500 ? 'The request could not be processed.' : 'Something went wrong on our side. Please try again.';
+    if (req.xhr || req.get('accept')?.includes('application/json') || req.path.includes('/api/')) return res.status(status).json({ error: text });
+    messagePage(res, {
+      status,
+      title: status === 403 ? 'Please try again' : status === 429 ? 'Slow down a little' : status < 500 ? 'Something is not right' : 'Something went wrong',
+      text,
+      iconName: 'alert',
+      action: html`<a class="btn btn-primary" href="/" data-back>Go back</a>`,
+    });
+  });
+
+  return app;
+}

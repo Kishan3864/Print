@@ -1,0 +1,8 @@
+# PrintDesk - customer order and tracking pages also send "noindex".
+User-agent: *
+Allow: /
+Disallow: /shop$
+Disallow: /shop/
+Disallow: /admin$
+Disallow: /admin/
+Disallow: /api/

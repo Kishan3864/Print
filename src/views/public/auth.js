@@ -1,0 +1,133 @@
+import { html, raw } from '../../lib/html.js';
+import { config } from '../../config.js';
+import { alert, csrfField, field, icon } from '../components.js';
+
+const DM_URL = `https://ig.me/m/${config.instagram}`;
+const HOST = config.baseUrl.replace(/^https?:\/\//, '') + '/';
+
+/** aria-describedby / aria-invalid for an input rendered through field(). */
+function aria(id, { hint = false, error = '', extra = '' } = {}) {
+  const ids = [extra, hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ');
+  return html`${ids ? html` aria-describedby="${ids}"` : ''}${error ? raw(' aria-invalid="true"') : ''}`;
+}
+
+const cmykBar = () => html`<div class="cmyk-bar au-bar" aria-hidden="true"><span></span><span></span><span></span><span></span></div>`;
+
+// ---------- register ----------
+export function registerPage(res, { values = {}, errors = {} } = {}) {
+  const v = (k) => values[k] || '';
+  const e = (k) => errors[k] || '';
+  const hasErrors = Object.keys(errors).length > 0;
+
+  const text = (id, name, { type = 'text', hint = '', extra = '', attrs = '' } = {}) =>
+    html`<input type="${type}" id="${id}" name="${name}" value="${type === 'password' ? '' : v(name)}" ${raw(attrs)}${aria(id, { hint: Boolean(hint), error: e(name), extra })}>`;
+
+  const slugControl = html`<div class="input-group au-slug-group">
+      <span class="input-addon" id="reg-slug-host">${HOST}</span>
+      <input type="text" id="reg-slug" name="slug" value="${v('slug')}" required maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="your-shop-name" data-slug-input${aria('reg-slug', { hint: true, error: e('slug'), extra: 'reg-slug-host reg-slug-status' })}>
+    </div>
+    <p class="au-slug-status" id="reg-slug-status" aria-live="polite" data-slug-status></p>`;
+
+  return html`<section class="auth-wrap">
+    <div class="card auth-card auth-card-wide au-card">
+      ${cmykBar()}
+      <h1>Register your shop</h1>
+      <p class="lead">Get your own order link where customers send files to print. It takes about two minutes.</p>
+      ${hasErrors ? html`<div class="au-alert">${alert('danger', errors._form || 'Please fix the highlighted fields below.')}</div>` : ''}
+
+      <form method="post" action="/register" class="au-form" data-register>
+        ${csrfField(res)}
+        <fieldset class="au-group">
+          <legend>Your shop</legend>
+          <div class="form-row">
+            ${field({ label: 'Shop name', id: 'reg-name', error: e('name'), control: text('reg-name', 'name', { attrs: 'required maxlength="80" autocomplete="organization" placeholder="e.g. Navrang Prints" data-shop-name' }) })}
+            ${field({ label: 'City', id: 'reg-city', error: e('city'), control: text('reg-city', 'city', { attrs: 'required maxlength="60" autocomplete="address-level2" placeholder="e.g. Surat"' }) })}
+          </div>
+          <div class="au-slug">
+            ${field({
+              label: 'Your order link',
+              id: 'reg-slug',
+              error: e('slug'),
+              hint: 'Customers open this link to send you files. Lowercase letters, numbers and hyphens.',
+              control: slugControl,
+            })}
+          </div>
+        </fieldset>
+
+        <fieldset class="au-group">
+          <legend>Contact</legend>
+          <div class="form-row">
+            ${field({ label: 'Your name', id: 'reg-owner', error: e('owner_name'), control: text('reg-owner', 'owner_name', { attrs: 'required maxlength="80" autocomplete="name"' }) })}
+            ${field({
+              label: 'Mobile number',
+              id: 'reg-mobile',
+              error: e('mobile'),
+              control: text('reg-mobile', 'mobile', { type: 'tel', attrs: 'required maxlength="20" inputmode="tel" autocomplete="tel" placeholder="98765 43210"' }),
+            })}
+          </div>
+          ${field({
+            label: 'Email',
+            id: 'reg-email',
+            error: e('email'),
+            hint: 'You will log in with this email.',
+            control: text('reg-email', 'email', { type: 'email', hint: 'yes', attrs: 'required maxlength="160" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false"' }),
+          })}
+        </fieldset>
+
+        <fieldset class="au-group">
+          <legend>Password</legend>
+          <div class="form-row">
+            ${field({
+              label: 'Password',
+              id: 'reg-password',
+              error: e('password'),
+              hint: 'At least 8 characters.',
+              control: text('reg-password', 'password', { type: 'password', hint: 'yes', attrs: 'required minlength="8" maxlength="72" autocomplete="new-password"' }),
+            })}
+            ${field({
+              label: 'Confirm password',
+              id: 'reg-password2',
+              error: e('password2'),
+              control: text('reg-password2', 'password2', { type: 'password', attrs: 'required minlength="8" maxlength="72" autocomplete="new-password"' }),
+            })}
+          </div>
+        </fieldset>
+
+        <div class="au-approval">${alert('info', 'Your account will be active after approval by Brighton Solution.', 'shield')}</div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading="Creating your account…">Create my account</button>
+      </form>
+    </div>
+    <p class="auth-foot">Already registered? <a href="/login">Log in</a></p>
+  </section>`;
+}
+
+// ---------- login ----------
+export function loginPage(res, { email = '', next = '', error = '', demoSession = false } = {}) {
+  return html`<section class="auth-wrap">
+    <div class="card auth-card au-card">
+      ${cmykBar()}
+      <h1>Welcome back</h1>
+      <p class="lead">Log in to see your orders.</p>
+      ${demoSession ? html`<div class="au-alert">${alert('info', 'You are in the demo. Logging in here takes you to your own shop.')}</div>` : ''}
+      ${error ? html`<div class="au-alert" role="alert">${alert('danger', error)}</div>` : ''}
+
+      <form method="post" action="/login" class="au-form">
+        ${csrfField(res)}
+        ${next ? html`<input type="hidden" name="next" value="${next}">` : ''}
+        ${field({
+          label: 'Email',
+          id: 'login-email',
+          control: html`<input type="email" id="login-email" name="email" value="${email}" required maxlength="160" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"${email ? '' : raw(' autofocus')}>`,
+        })}
+        ${field({
+          label: 'Password',
+          id: 'login-password',
+          control: html`<input type="password" id="login-password" name="password" required maxlength="200" autocomplete="current-password"${email ? raw(' autofocus') : ''}>`,
+        })}
+        <button class="btn btn-primary btn-lg btn-block" type="submit" data-loading="Logging in…">Log in</button>
+      </form>
+      <p class="au-help">${icon('info')}<span>Forgot your password? DM <a href="${DM_URL}" target="_blank" rel="noopener">@${config.instagram}</a> on Instagram and we will reset it for you.</span></p>
+    </div>
+    <p class="auth-foot">New to PrintDesk? <a href="/register">Register your shop</a><span class="au-sep" aria-hidden="true"></span><a href="/demo">Try the live demo</a></p>
+  </section>`;
+}

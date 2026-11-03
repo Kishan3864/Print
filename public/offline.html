@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>You're offline · PrintDesk</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0f1a" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="v-auth offline-page">
+<header class="site-header site-header-min">
+  <div class="container header-row">
+    <a class="brand" href="/" aria-label="PrintDesk home"><svg class="logo-mark" viewBox="0 0 64 64" width="30" height="30" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="16" fill="#0b1220"/><rect x="14" y="14" width="8" height="36" rx="4" fill="#00aeef"/><rect x="25" y="14" width="8" height="36" rx="4" fill="#ec008c"/><rect x="36" y="14" width="8" height="36" rx="4" fill="#ffd200"/><rect x="47" y="14" width="4" height="36" rx="2" fill="#ffffff" opacity=".9"/></svg><span class="brand-name">Print<b>Desk</b></span></a>
+  </div>
+</header>
+<main id="main" class="main main-auth">
+  <section class="container-narrow message-page">
+    <div class="card card-pad message-card">
+      <div class="message-icon offline-icon"><svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><path d="M14.4 10.2A10 10 0 0 1 19 12.9"/><path d="M1.4 9a15 15 0 0 1 4.3-2.7"/><path d="M10.7 5.1A15 15 0 0 1 22.6 9"/><path d="M12 20h.01"/></svg></div>
+      <h1>You're offline</h1>
+      <p class="lead">Check your internet connection and try again.</p>
+      <p class="muted">If you were sending files or updating an order, please do it again once you are back online.</p>
+      <!-- Empty href = this same URL: the page that failed to load is requested again. -->
+      <a class="btn btn-primary btn-lg" href="">Try again</a>
+      <p class="offline-home"><a href="/">Go to the PrintDesk home page</a></p>
+    </div>
+  </section>
+</main>
+</body>
+</html>
