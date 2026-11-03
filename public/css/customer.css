@@ -572,3 +572,9 @@
     --cust-brand-glow: rgba(15, 23, 42, .25);
   }
 }
+
+/* corrected file (new version) */
+.cust-version { display: grid; gap: 8px; margin: 14px 0 6px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface-2); }
+.cust-version-title { margin: 0; font-size: .88rem; color: var(--text-2); }
+.cust-version input[type=file] { font-size: .85rem; }
+.cust-version .btn { justify-self: start; }

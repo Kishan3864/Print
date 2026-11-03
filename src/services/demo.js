@@ -19,7 +19,7 @@ const DEFAULTS = {
   email: 'demo@printdesk.invalid',
   city: 'Your City',
   address: 'Sample address, Your City',
-  brand_color: '#4f46e5',
+  brand_color: '#1a5d40',
 };
 
 /** The demo shop row (only a shop flagged is_demo – never touches a real shop). */
@@ -59,9 +59,9 @@ function samplePlan(nowMs, todayMs) {
     {
       at: ago(74),
       data: { customer_name: 'Sanjay', customer_mobile: '98xxxxxx10', size: 'A4', quantity: 500, color_mode: 'color', sides: 'single', notes: 'Sample order – Letterheads for my clinic. Logo on top, address and phone number in the footer.' },
-      files: [{ name: 'Clinic letterhead final.pdf', pdf: { title: 'Clinic Letterhead', subtitle: 'A4 · 500 sheets · colour · single side', accent: '#4f46e5' } }],
+      files: [{ name: 'Clinic letterhead final.pdf', pdf: { title: 'Clinic Letterhead', subtitle: 'A4 · 500 sheets · colour · single side', accent: '#1a5d40' } }],
       steps: [
-        { h: 1.5, proof: { name: 'Letterhead proof.png', art: { style: 'band', paper: [210, 297], accent: '#4f46e5', title: 'City Clinic', sub: 'Letterhead' } }, note: 'Letterhead proof – please check the address and phone number.' },
+        { h: 1.5, proof: { name: 'Letterhead proof.png', art: { style: 'band', paper: [210, 297], accent: '#1a5d40', title: 'City Clinic', sub: 'Letterhead' } }, note: 'Letterhead proof – please check the address and phone number.' },
         { h: 3, by: 'customer', to: 'approved', note: 'All correct, please print.' },
         { h: 4, to: 'printing' },
         { h: 22, to: 'ready', note: '500 letterheads packed and ready for pickup.' },
@@ -163,7 +163,7 @@ function pdfText(s) {
 function makePdf({ title, subtitle, accent }) {
   const rgb = (hex) => hexRgb(hex).map((v) => (v / 255).toFixed(3)).join(' ');
   const ops = [];
-  [['#6366f1', 48], ['#f97316', 62], ['#fbbf24', 76], ['#0b1220', 90]].forEach(([c, x]) => ops.push(`${rgb(c)} rg ${x} 768 10 40 re f`));
+  [['#ef8a2b', 48], ['#f97316', 62], ['#fbbf24', 76], ['#0b1220', 90]].forEach(([c, x]) => ops.push(`${rgb(c)} rg ${x} 768 10 40 re f`));
   ops.push(`BT /F1 10 Tf ${rgb('#64748b')} rg 116 794 Td (SAMPLE ARTWORK) Tj ET`);
   ops.push(`BT /F2 10 Tf ${rgb('#64748b')} rg 116 778 Td (${pdfText('Brighton Print demo – sample artwork')}) Tj ET`);
   ops.push(`BT /F1 28 Tf ${rgb('#0b1220')} rg 48 700 Td (${pdfText(title)}) Tj ET`);
@@ -223,7 +223,7 @@ function drawPaper(c, a, x, y, w, h) {
     c.text(a.sub, x + pad, ty + 2, 2, '#ffffff', { alpha: 0.85 });
     skeleton(c, x + pad, y + band + pad, w - pad * 2, y + h - pad * 2.2);
     c.rect(x + pad, y + h - pad * 1.4, w - pad * 2, 2, a.accent);
-    ['#6366f1', '#f97316', '#fbbf24'].forEach((col, i) => c.circle(x + w - pad - i * 16 - 6, y + h - pad * 0.8, 5, col));
+    ['#ef8a2b', '#f97316', '#fbbf24'].forEach((col, i) => c.circle(x + w - pad - i * 16 - 6, y + h - pad * 0.8, 5, col));
   } else if (a.style === 'card') {
     const side = Math.round(w * 0.34);
     c.roundRect(x, y, side, h, 4, a.accent);
@@ -324,11 +324,11 @@ function photoImage(p) {
 function customerFileBytes(f, orderNo) {
   if (f.pdf) return cached(`pdf:${f.name}`, () => makePdf(f.pdf));
   if (f.photo != null) return cached(`photo:${f.photo}`, () => photoImage(PHOTOS[f.photo]));
-  return cached(`art:${orderNo}:${f.name}`, () => artImage(f.art, { label: 'Sample artwork', tagColor: '#4f46e5', caption: `Brighton Print demo - order #${orderNo}` }));
+  return cached(`art:${orderNo}:${f.name}`, () => artImage(f.art, { label: 'Sample artwork', tagColor: '#1a5d40', caption: `Brighton Print demo - order P-${orderNo}` }));
 }
 
 const proofBytes = (p, orderNo) =>
-  cached(`proof:${orderNo}:${p.name}`, () => artImage(p.art, { label: 'Sample proof', tagColor: '#f97316', caption: `Proof for order #${orderNo} - Brighton Print demo` }));
+  cached(`proof:${orderNo}:${p.name}`, () => artImage(p.art, { label: 'Sample proof', tagColor: '#f97316', caption: `Proof for order P-${orderNo} - Brighton Print demo` }));
 
 // ---------- reset ----------
 const iso = (ms) => new Date(ms).toISOString();

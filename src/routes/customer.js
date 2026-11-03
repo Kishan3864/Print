@@ -4,8 +4,8 @@ import { storageCapBytes } from '../services/billing.js';
 import { SLUG_ROUTE, clampInt, clean, cleanLine, flash, isEmail, isMobile, maskPhone } from '../lib/util.js';
 import { actionLimiter, orderLimiter } from '../lib/security.js';
 import { discardUploads, orderFilesUpload, sendStoredFile } from '../lib/uploads.js';
-import { acceptsOrders, getShopBySlug, sizeOptions, storageUsed } from '../services/shops.js';
-import { createOrder, customerDecision, getOrderByToken, getOrderFile, latestProof, orderFiles } from '../services/orders.js';
+import { acceptsOrders, getShopBySlug, paperOptions, sizeOptions, storageUsed } from '../services/shops.js';
+import { addCustomerVersion, createOrder, customerDecision, getOrderByToken, getOrderFile, latestProof, orderFiles } from '../services/orders.js';
 import { trackPath } from '../services/notify.js';
 import { messagePage } from '../views/layout.js';
 import { closedPage, orderFormPage } from '../views/customer/order-form.js';
@@ -74,6 +74,8 @@ function readOrder(req, shop) {
     quantity: clampInt(b.quantity, 1, 100000, 1),
     color_mode: clean(b.color_mode, 10),
     sides: clean(b.sides, 10),
+    paper: cleanLine(b.paper, 60),
+    delivery: clean(b.delivery, 10) === 'delivery' ? 'delivery' : 'pickup',
     notes: clean(b.notes, 1000),
   };
   const errors = {};
@@ -92,6 +94,7 @@ function readOrder(req, shop) {
     if (!missing('color_mode')) errors.color_mode = 'Please choose colour or black & white.';
     values.color_mode = 'color';
   }
+  if (values.paper && !paperOptions(shop).includes(values.paper)) values.paper = '';
   if (values.sides !== 'single' && values.sides !== 'both') {
     if (!missing('sides')) errors.sides = 'Please choose single side or both sides.';
     values.sides = 'single';
@@ -110,6 +113,8 @@ function readOrder(req, shop) {
     quantity: values.quantity,
     color_mode: values.color_mode,
     sides: values.sides,
+    paper: values.paper,
+    delivery: values.delivery,
     notes: values.notes,
   };
   return { values, data, errors };
@@ -204,6 +209,26 @@ const decide = (decision) => (req, res) => {
 router.post(`${ORDER}/approve`, actionLimiter, loadShop, loadOrder, decide('approve'));
 router.post(`${ORDER}/changes`, actionLimiter, loadShop, loadOrder, decide('changes'));
 
+// ---------- corrected file (new version, same order) ----------
+router.post(`${ORDER}/version`, actionLimiter, loadShop, loadOrder, checkQuota, orderFilesUpload, (req, res) => {
+  const shop = req.custShop;
+  const order = req.custOrder;
+  const back = `${trackPath(shop, order)}#files`;
+  if (req.uploadError || !req.files.length) {
+    discardUploads(req);
+    flash(req, 'error', req.uploadError || 'Please choose the corrected file.');
+    return res.redirect(303, back);
+  }
+  try {
+    addCustomerVersion(shop, order, req.files, clean(req.body.note, 500));
+    flash(req, 'success', `New version sent to ${shop.name}. The old file is marked replaced – only the new one will be printed.`);
+  } catch (err) {
+    discardUploads(req);
+    flash(req, 'error', err.message);
+  }
+  res.redirect(303, back);
+});
+
 // ---------- files (only files of this token's order) ----------
 router.get(`${ORDER}/f/:fileId(\\d+)`, loadShop, loadOrder, (req, res, next) => {
   const shop = req.custShop;
@@ -217,7 +242,7 @@ router.get(`${ORDER}/f/:fileId(\\d+)`, loadShop, loadOrder, (req, res, next) => 
     text: `This file was deleted after ${shop.retention_days} days, as files are only kept for a short time. Please contact ${shop.name} if you need it again.`,
     iconName: 'file',
     brandShop: shop,
-    action: html`<a class="btn btn-brand" href="${trackPath(shop, order)}">Back to order #${order.order_no}</a>`,
+    action: html`<a class="btn btn-brand" href="${trackPath(shop, order)}">Back to order P-${order.order_no}</a>`,
   });
 });
 

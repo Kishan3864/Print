@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { db, now } from '../db.js';
-import { randomToken } from '../lib/util.js';
+import { randomHex, randomToken } from '../lib/util.js';
 import { canTransition, PROOF_ALLOWED, STATUS_LABEL, TABS } from '../lib/status.js';
-import { removeStoredFile } from '../lib/uploads.js';
+import { removeStoredFile, storedFilePath } from '../lib/uploads.js';
 import { emailCustomer, emailShopNewOrder } from './notify.js';
 import { publishOrder } from '../lib/live.js';
 
@@ -47,9 +49,9 @@ export const createOrder = (shop, data, files = [], { isSample = false, at } = {
     const token = randomToken(24);
     const info = db
       .prepare(
-        `INSERT INTO orders (shop_id, order_no, token, customer_name, customer_mobile, customer_email, size, quantity,
+        `INSERT INTO orders (shop_id, order_no, token, customer_name, customer_mobile, customer_email, size, paper, delivery, quantity,
            color_mode, sides, notes, status, is_sample, created_at, updated_at)
-         VALUES (@shop_id, @order_no, @token, @customer_name, @customer_mobile, @customer_email, @size, @quantity,
+         VALUES (@shop_id, @order_no, @token, @customer_name, @customer_mobile, @customer_email, @size, @paper, @delivery, @quantity,
            @color_mode, @sides, @notes, 'new', @is_sample, @created, @created)`
       )
       .run({
@@ -60,6 +62,8 @@ export const createOrder = (shop, data, files = [], { isSample = false, at } = {
         customer_mobile: data.customer_mobile,
         customer_email: data.customer_email || '',
         size: data.size || '',
+        paper: data.paper || '',
+        delivery: data.delivery === 'delivery' ? 'delivery' : 'pickup',
         quantity: data.quantity || 1,
         color_mode: data.color_mode === 'bw' ? 'bw' : 'color',
         sides: data.sides === 'both' ? 'both' : 'single',
@@ -150,7 +154,7 @@ export function listOrders(shopId, { tab = 'active', q = '', limit = 50, offset 
     where.push(`o.status IN (${def.statuses.map((_, i) => `@s${i}`).join(', ')})`);
     def.statuses.forEach((s, i) => (params[`s${i}`] = s));
   }
-  const needle = String(q || '').trim().replace(/^#/, '');
+  const needle = String(q || '').trim().replace(/^(#|p-?)(?=\d)/i, '');
   if (needle) {
     const conds = ['o.customer_name LIKE @like', 'o.customer_mobile LIKE @like', 'CAST(o.order_no AS TEXT) LIKE @like', 'o.notes LIKE @like'].map((c) => `${c} ESCAPE '\\'`);
     params.like = '%' + needle.replace(/[\\%_]/g, (c) => '\\' + c) + '%';
@@ -218,4 +222,42 @@ export function purgeExpiredFiles() {
     addEvent(orderId, { actor: 'system', type: 'files_deleted', note: `${n} file${n === 1 ? '' : 's'} auto-deleted after ${days} days` });
   }
   return rows.length;
+}
+
+/** Statuses in which the customer may still send a corrected file. */
+export const VERSION_ALLOWED = new Set(['new', 'proof_sent', 'changes_requested']);
+
+/**
+ * Customer uploads a corrected file: earlier customer files are marked replaced,
+ * the new ones get the next version number, and a proofed order goes back for a new proof.
+ */
+export function addCustomerVersion(shop, order, files, note = '') {
+  if (!VERSION_ALLOWED.has(order.status)) throw new Error('This order is already being printed – please contact the shop.');
+  const at = now();
+  db.transaction(() => {
+    const { v } = db.prepare("SELECT COALESCE(MAX(version), 1) AS v FROM files WHERE order_id = ? AND kind = 'customer'").get(order.id);
+    db.prepare("UPDATE files SET replaced_at = ? WHERE order_id = ? AND kind = 'customer' AND replaced_at IS NULL").run(at, order.id);
+    const ins = db.prepare("INSERT INTO files (order_id, shop_id, kind, original_name, stored_name, size_bytes, created_at, version) VALUES (?, ?, 'customer', ?, ?, ?, ?, ?)");
+    for (const f of files) ins.run(order.id, shop.id, String(f.originalname).slice(0, 200), f.filename, f.size || 0, at, v + 1);
+    const to = order.status === 'new' ? 'new' : 'changes_requested';
+    db.prepare('UPDATE orders SET status = ?, customer_note = ?, updated_at = ? WHERE id = ? AND shop_id = ?').run(to, note || 'New file version uploaded', at, order.id, shop.id);
+    addEvent(order.id, { actor: 'customer', type: 'version', from: order.status, to, note: `Version ${v + 1}: ${files.map((f) => f.originalname).join(', ')}${note ? `\n${note}` : ''}` });
+  })();
+  const updated = getOrderById(shop.id, order.id);
+  publishOrder(updated);
+  return updated;
+}
+
+/** Repeats an old order as a new one with the same details and the latest customer files. */
+export function reprintOrder(shop, order) {
+  const src = db.prepare("SELECT * FROM files WHERE order_id = ? AND kind = 'customer' AND replaced_at IS NULL AND deleted_at IS NULL").all(order.id);
+  const live = src.filter((f) => storedFilePath(f) && fs.existsSync(storedFilePath(f)));
+  if (!live.length) throw new Error('The files of this order were auto-deleted, so it cannot be reprinted. Ask the customer to upload again.');
+  const copies = live.map((f) => {
+    const filename = `${randomHex(16)}.${f.stored_name.split('.').pop()}`;
+    fs.copyFileSync(storedFilePath(f), path.join(path.dirname(storedFilePath(f)), filename));
+    return { originalname: f.original_name, filename, size: f.size_bytes };
+  });
+  const data = { ...order, notes: `Reprint of P-${order.order_no}${order.notes ? `\n${order.notes}` : ''}` };
+  return createOrder(shop, data, copies, { isSample: Boolean(order.is_sample) });
 }

@@ -33,6 +33,18 @@ export function shopState(shop) {
 }
 export const acceptsOrders = (shop) => shopState(shop) === 'active';
 
+export const DEFAULT_PAPERS = ['Normal', 'Matte', 'Glossy', 'Art paper', 'Sticker', 'Other'];
+
+export function paperOptions(shop) {
+  try {
+    const list = JSON.parse(shop.paper_options || '[]');
+    if (Array.isArray(list) && list.length) return list.map(String);
+  } catch {
+    /* fall through */
+  }
+  return DEFAULT_PAPERS;
+}
+
 export function sizeOptions(shop) {
   try {
     const list = JSON.parse(shop.size_options || '[]');

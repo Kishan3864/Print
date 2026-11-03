@@ -155,7 +155,7 @@
     if (typeof PD.toast !== 'function') return;
     var o = fresh[0]; // newest first
     var who = o.name ? ' from ' + o.name : '';
-    if (fresh.length === 1) PD.toast('New order #' + o.no + who, { href: '/shop/orders/' + o.no, linkText: 'Open', duration: 10000 });
+    if (fresh.length === 1) PD.toast('New order P-' + o.no + who, { href: '/shop/orders/' + o.no, linkText: 'Open', duration: 10000 });
     else PD.toast(fresh.length + ' new orders – latest #' + o.no + who, { href: '/shop', linkText: 'View', duration: 10000 });
   }
 

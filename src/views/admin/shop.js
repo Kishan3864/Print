@@ -224,7 +224,7 @@ function usageCard({ counts, storage, cap, liveFiles, recent }) {
       ? html`<ul class="order-list adm-orders">
           ${recent.map(
             (o) => html`<li class="order-row">
-              <span class="order-no">#${o.order_no}</span>
+              <span class="order-no">P-${o.order_no}</span>
               <div class="order-main">
                 <div class="order-title adm-order-title">${statusPill(o.status)}${o.is_sample ? html`<span class="pill pill-sample">Sample</span>` : ''}</div>
                 <div class="order-meta">${plural(o.file_count, 'file')} · ${formatDateTime(o.created_at)}</div>

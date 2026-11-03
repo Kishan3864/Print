@@ -15,7 +15,7 @@ export const INBOX_FILTERS = [
 export const REPLY_MAX = 3000;
 
 // Inbox avatars: a stable colour per shop name (the inbox query has no brand colours).
-const AVATAR_COLORS = ['#4f46e5', '#0f766e', '#7c3aed', '#c2410c', '#be185d', '#1d4ed8', '#15803d'];
+const AVATAR_COLORS = ['#1a5d40', '#0f766e', '#7c3aed', '#c2410c', '#be185d', '#1d4ed8', '#15803d'];
 const colorFor = (name) => AVATAR_COLORS[Array.from(String(name || '')).reduce((a, c) => (a + c.codePointAt(0)) % 997, 0) % AVATAR_COLORS.length];
 
 const EMPTY = {

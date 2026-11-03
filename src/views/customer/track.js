@@ -1,11 +1,12 @@
 import { html } from '../../lib/html.js';
 import { STATUS_CUSTOMER_TEXT, timelineSteps } from '../../lib/status.js';
+import { VERSION_ALLOWED } from '../../services/orders.js';
 import { extOf, isPreviewableImage } from '../../lib/uploads.js';
 import { formatBytes, formatDateTime, maskPhone, timeAgo, waLink } from '../../lib/util.js';
 import { acceptsOrders } from '../../services/shops.js';
 import { mailEnabled, shopPath, trackPath, trackUrl } from '../../services/notify.js';
 import { render } from '../layout.js';
-import { alert, csrfField, field, icon, statusPill } from '../components.js';
+import { alert, csrfField, field, icon, statusPill , withCsrf } from '../components.js';
 import { COLOR_LABEL, SIDES_LABEL, cardTitle, contactActions, ownerNote, shopAddress } from './common.js';
 
 // Private order tracking page: /<slug>/o/<token> (or /demo/<slug>/o/<token>). Only ever shows this one order.
@@ -26,7 +27,7 @@ const SUBTEXT = {
   approved: () => 'Thank you! Your order goes to print next.',
   changes_requested: () => 'The shop is making your changes and will send a new proof to this page.',
   printing: () => 'This page shows “Ready” as soon as you can pick it up.',
-  ready: (shop, order) => `Collect it from ${shop.name} and mention order #${order.order_no} at the counter.`,
+  ready: (shop, order) => `Collect it from ${shop.name} and mention order P-${order.order_no} at the counter.`,
   delivered: (shop) => `Thank you for ordering from ${shop.name}.`,
 };
 const STATUS_ICON = {
@@ -40,16 +41,17 @@ const STATUS_ICON = {
   cancelled: 'x',
 };
 
-const saveText = (shop, order, url) => `My print order #${order.order_no} at ${shop.name}: ${url}`;
+const saveText = (shop, order, url) => `My print order P-${order.order_no} at ${shop.name}: ${url}`;
 
 function fileItem(file, href, days) {
   const gone = Boolean(file.deleted_at);
   const name = file.original_name;
-  return html`<li class="cust-file${gone ? ' is-deleted' : ''}">
+  const ver = file.replaced_at ? `Replaced (v${file.version}) · ` : file.version > 1 ? `Version ${file.version} · latest · ` : '';
+  return html`<li class="cust-file${gone || file.replaced_at ? ' is-deleted' : ''}">
     <span class="cust-file-ext">${extOf(name) || 'file'}</span>
     <span class="cust-file-main">
       <span class="cust-file-name" title="${name}">${name}</span>
-      <span class="cust-file-meta">${gone ? `Deleted after ${days} days` : formatBytes(file.size_bytes)}</span>
+      <span class="cust-file-meta">${ver}${gone ? `Deleted after ${days} days` : formatBytes(file.size_bytes)}</span>
     </span>
     ${gone
       ? ''
@@ -78,7 +80,7 @@ function placedCard(shop, order) {
     <span class="cust-placed-ic">${icon('check')}</span>
     <div class="cust-placed-body">
       <h2 id="cust-placed-title">Order placed</h2>
-      <p class="cust-placed-text">${shop.name} has received your files. Your order number is <b class="order-no">#${order.order_no}</b>.</p>
+      <p class="cust-placed-text">${shop.name} has received your files. Your order number is <b class="order-no">P-${order.order_no}</b>.</p>
       <p class="cust-placed-save">Save this page – it is where you check progress and approve your proof.${emailed ? ' We have also emailed the link to you.' : ''}</p>
       <div class="cust-placed-actions">
         <button type="button" class="btn btn-brand" data-copy="${url}" data-copy-msg="Link copied – keep it safe">${icon('copy')}<span>Copy link</span></button>
@@ -95,7 +97,7 @@ function statusCard(shop, order, proof) {
       <p class="cust-kicker">${icon('store')}<span>Order at ${shop.name}</span></p>
       ${statusPill(st)}
     </div>
-    <h1 class="cust-order-no" id="cust-order-title"><span class="sr-only">Order </span>#${order.order_no}</h1>
+    <h1 class="cust-order-no" id="cust-order-title"><span class="sr-only">Order </span>P-${order.order_no}</h1>
     <div class="cust-status-msg">
       <span class="cust-st-ic">${icon(STATUS_ICON[st] || 'info')}</span>
       <div class="cust-status-copy">
@@ -119,7 +121,7 @@ function proofCard(res, shop, order, proof, olderProofs, base) {
   const preview =
     !gone && isPreviewableImage(proof.original_name)
       ? html`<a class="cust-proof-img" href="${href}?inline=1" target="_blank" rel="noopener" aria-label="Open the proof full size">
-            <img src="${href}?inline=1" alt="Proof for order #${order.order_no}" decoding="async">
+            <img src="${href}?inline=1" alt="Proof for order P-${order.order_no}" decoding="async">
             <span class="cust-proof-zoom">${icon('search')}<span>Tap to zoom</span></span>
           </a>
           <div class="cust-proof-tools">
@@ -191,8 +193,8 @@ function contactCard(shop, order) {
   if (!shop.phone && !shop.address) return '';
   return html`<section class="cust-card cust-contact${ready ? ' is-ready' : ''}" aria-labelledby="cust-contact-title">
     ${cardTitle('cust-contact-title', ready ? 'store' : 'phone', ready ? 'Pick up your order' : 'Questions about this order?')}
-    <p class="cust-muted">${ready ? `Your order is ready at ${shop.name}. Mention order #${order.order_no} at the counter.` : `Contact ${shop.name} and mention order #${order.order_no}.`}</p>
-    ${contactActions(shop, `Hi ${shop.name}, about my order #${order.order_no}`)}
+    <p class="cust-muted">${ready ? `Your order is ready at ${shop.name}. Mention order P-${order.order_no} at the counter.` : `Contact ${shop.name} and mention order P-${order.order_no}.`}</p>
+    ${contactActions(shop, `Hi ${shop.name}, about my order P-${order.order_no}`)}
     ${shopAddress(shop)}
   </section>`;
 }
@@ -209,7 +211,7 @@ function keepCard(shop, order) {
     </div>
     <div class="cust-keep-actions">
       <a class="btn btn-secondary btn-sm" href="${waLink('', saveText(shop, order, url))}" target="_blank" rel="noopener">${icon('whatsapp')}<span>Save on WhatsApp</span></a>
-      <button type="button" class="btn btn-ghost btn-sm" data-share data-share-url="${url}" data-share-title="Order #${no} – ${shop.name}" data-share-text="My print order #${no} at ${shop.name}">${icon('share')}<span>Share</span></button>
+      <button type="button" class="btn btn-ghost btn-sm" data-share data-share-url="${url}" data-share-title="Order P-${no} – ${shop.name}" data-share-text="My print order P-${no} at ${shop.name}">${icon('share')}<span>Share</span></button>
     </div>
     ${acceptsOrders(shop) ? html`<a class="cust-again" href="${shopPath(shop)}">${icon('plus')}<span>Place another order</span>${icon('arrowRight')}</a>` : ''}
   </section>`;
@@ -248,16 +250,26 @@ export function trackPage(res, { shop, order, files, proof, isNew = false, owner
             <div><dt>Quantity</dt><dd>${order.quantity}</dd></div>
             <div><dt>Print</dt><dd>${COLOR_LABEL[order.color_mode] || order.color_mode}</dd></div>
             <div><dt>Sides</dt><dd>${SIDES_LABEL[order.sides] || order.sides}</dd></div>
+            ${order.paper ? html`<div><dt>Paper</dt><dd>${order.paper}</dd></div>` : ''}
+            <div><dt>Handover</dt><dd>${order.delivery === 'delivery' ? 'Delivery' : 'Pickup'}</dd></div>
           </dl>
           ${order.notes ? html`<div class="cust-note cust-note-you"><span class="cust-note-label">Your notes</span><p>${order.notes}</p></div>` : ''}
           <p class="cust-by">${icon('user')}<span>${order.customer_name} · ${/x/i.test(order.customer_mobile) ? order.customer_mobile : maskPhone(order.customer_mobile)}</span></p>
         </section>
 
-        <section class="cust-card" aria-labelledby="cust-files-title">
+        <section class="cust-card" id="files" aria-labelledby="cust-files-title">
           ${cardTitle('cust-files-title', 'file', 'Your files', html`<span class="count">${customerFiles.length}</span>`)}
           ${customerFiles.length
             ? html`<ul class="cust-file-list">${customerFiles.map((f) => fileItem(f, `${base}/f/${f.id}`, days))}</ul>`
             : html`<p class="cust-muted">No files on this order.</p>`}
+          ${VERSION_ALLOWED.has(order.status)
+            ? html`<form method="post" action="${withCsrf(`${base}/version`, res)}" enctype="multipart/form-data" class="cust-version">
+                <p class="cust-version-title"><b>Need to change your file?</b> Send the corrected file here – the old one is marked replaced and only the new one is printed.</p>
+                <input type="file" name="files" required aria-label="Corrected file">
+                <input type="text" name="note" maxlength="500" placeholder="What changed? (optional)" aria-label="What changed">
+                <button class="btn btn-brand btn-sm" type="submit" data-loading="Uploading…">${icon('upload')}<span>Send new version</span></button>
+              </form>`
+            : ''}
           <p class="cust-privacy">${icon('shield')}<span>Only you and ${shop.name} can open these files. They are deleted automatically ${days} days after upload.</span></p>
         </section>
       </div>
@@ -270,8 +282,8 @@ export function trackPage(res, { shop, order, files, proof, isNew = false, owner
   </div>`;
 
   render(res, {
-    title: `Order #${no} – ${shop.name}`,
-    description: `Track your print order #${no} at ${shop.name}.`,
+    title: `Order P-${no} – ${shop.name}`,
+    description: `Track your print order P-${no} at ${shop.name}.`,
     variant: 'customer',
     brandShop: shop,
     bodyClass: 'cust-track-page',

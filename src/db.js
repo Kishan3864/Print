@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS shops (
   plan            TEXT CHECK (plan IS NULL OR plan IN ('starter','pro','business')),
   paid_until      TEXT,
   is_demo         INTEGER NOT NULL DEFAULT 0,
-  brand_color     TEXT NOT NULL DEFAULT '#4f46e5',
+  brand_color     TEXT NOT NULL DEFAULT '#1a5d40',
   logo_file       TEXT,
   phone           TEXT NOT NULL DEFAULT '',
   address         TEXT NOT NULL DEFAULT '',
@@ -197,6 +197,13 @@ const MIGRATIONS = [
      opened_at   TEXT,
      created_at  TEXT NOT NULL
    );`,
+
+  // 3: paper + pickup/delivery on orders, file versions (new version replaces the old)
+  `ALTER TABLE orders ADD COLUMN paper TEXT NOT NULL DEFAULT '';
+   ALTER TABLE orders ADD COLUMN delivery TEXT NOT NULL DEFAULT 'pickup';
+   ALTER TABLE files ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+   ALTER TABLE files ADD COLUMN replaced_at TEXT;
+   ALTER TABLE shops ADD COLUMN paper_options TEXT NOT NULL DEFAULT '[]';`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

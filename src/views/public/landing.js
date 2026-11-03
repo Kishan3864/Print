@@ -16,7 +16,7 @@ function phoneMockup() {
         <div class="lp-shop"><span class="lp-shop-logo">N</span><b>Navrang Prints</b></div>
         <div class="lp-order">
           <div class="lp-order-row">
-            <span class="order-no lp-order-no">Order #1024</span>
+            <span class="order-no lp-order-no">Order P-1024</span>
             <span class="pill pill-proof_sent">Proof sent</span>
           </div>
           <div class="lp-proof">${icon('file')}<span>Proof</span></div>

@@ -9,6 +9,7 @@ import { isSampleShop, storageCapBytes } from '../services/billing.js';
 import { listShopNotifications } from '../services/notifications.js';
 import { shopCounts, storageUsed } from '../services/shops.js';
 import {
+  reprintOrder,
   getOrderByNo,
   getOrderFile,
   orderFiles,
@@ -42,7 +43,7 @@ function orderNotFound(req, res) {
   messagePage(res, {
     status: 404,
     title: 'Order not found',
-    text: `There is no order #${req.params.no} in ${req.shop.name}.`,
+    text: `There is no order P-${req.params.no} in ${req.shop.name}.`,
     variant: 'shop',
     iconName: 'search',
     action: html`<a class="btn btn-primary" href="/shop">Back to orders</a>`,
@@ -101,7 +102,7 @@ router.get(`/orders/${NO}`, loadOrder, (req, res) => {
   const order = req.order;
   const files = orderFiles(order);
   render(res, {
-    title: `Order #${order.order_no}`,
+    title: `Order P-${order.order_no}`,
     variant: 'shop',
     active: 'orders',
     scripts: SCRIPTS,
@@ -148,12 +149,24 @@ router.post(`/orders/${NO}/status`, loadOrder, (req, res) => {
   }
   try {
     setStatus(req.shop, order, to, { note });
-    flash(req, 'success', `Order #${order.order_no} ${DONE_TEXT[to] || `is now ${STATUS_LABEL[to]}.`}`);
+    flash(req, 'success', `Order P-${order.order_no} ${DONE_TEXT[to] || `is now ${STATUS_LABEL[to]}.`}`);
     if (to === 'ready') flash(req, 'info', 'Now tap “Send ready message” to tell the customer on WhatsApp.');
   } catch (err) {
     flash(req, 'error', err.message || 'Could not update the order. Please try again.');
   }
   res.redirect(303, back(order));
+});
+
+// ---------- reprint: same details + latest files as a new order ----------
+router.post(`/orders/${NO}/reprint`, loadOrder, (req, res) => {
+  try {
+    const copy = reprintOrder(req.shop, req.order);
+    flash(req, 'success', `Reprint created as P-${copy.order_no} with the same file.`);
+    res.redirect(303, `/shop/orders/${copy.order_no}`);
+  } catch (err) {
+    flash(req, 'error', err.message);
+    res.redirect(303, back(req.order));
+  }
 });
 
 // ---------- proof upload (order is looked up before any file is written) ----------
@@ -205,7 +218,7 @@ router.get(`/orders/${NO}/files/:fileId(\\d{1,12})`, loadOrder, (req, res) => {
         : 'This file does not belong to this order.',
       variant: 'shop',
       iconName: 'file',
-      action: html`<a class="btn btn-primary" href="${back(req.order)}">Back to order #${req.order.order_no}</a>`,
+      action: html`<a class="btn btn-primary" href="${back(req.order)}">Back to order P-${req.order.order_no}</a>`,
     });
   if (!row) return gone();
   if (!sendStoredFile(res, row, { inline: req.query.inline === '1' })) gone();

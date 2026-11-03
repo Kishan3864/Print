@@ -61,7 +61,7 @@ function orderRow(o) {
     <a class="sh-row-link" href="${orderPath(o)}">
       <span class="sh-row-avatar" aria-hidden="true">${initialOf(o.customer_name)}</span>
       <span class="sh-row-main">
-        <span class="sh-row-line"><span class="sh-row-name">${o.customer_name}</span><span class="order-no sh-row-no">#${o.order_no}</span>${o.is_sample ? html`<span class="sh-row-sample">Sample</span>` : ''}</span>
+        <span class="sh-row-line"><span class="sh-row-name">${o.customer_name}</span><span class="order-no sh-row-no">P-${o.order_no}</span>${o.is_sample ? html`<span class="sh-row-sample">Sample</span>` : ''}</span>
         <span class="sh-row-meta">${jobLine(o)} · ${plural(o.file_count, 'file')}</span>
       </span>
       <span class="sh-row-side">
@@ -82,7 +82,7 @@ function firstOrdersEmpty(shop, formUrl) {
     <ol class="sh-how">
       <li><span class="sh-how-n">1</span><span>Customer opens your link or scans your QR</span></li>
       <li><span class="sh-how-n">2</span><span>Uploads files, picks size and copies</span></li>
-      <li><span class="sh-how-n">3</span><span>You get order <b class="order-no">#${shop.next_order_no}</b> here</span></li>
+      <li><span class="sh-how-n">3</span><span>You get order <b class="order-no">P-${shop.next_order_no}</b> here</span></li>
     </ol>
     <div class="btn-row sh-empty-actions">
       <a class="btn btn-secondary" href="${formUrl}" target="_blank" rel="noopener">${icon('eye')}<span>Try the order form</span></a>

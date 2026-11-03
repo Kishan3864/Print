@@ -17,13 +17,13 @@
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* CMYK accents */
-  --cyan: #6366f1;
+  --cyan: #ef8a2b;
   --magenta: #f97316;
   --yellow: #fbbf24;
-  --key: #1e1b4b;
+  --key: #10261c;
 
   /* Neutrals: white surfaces on a faint cool-grey page, soft 1px borders. */
-  --bg: #f7f7fb;
+  --bg: #faf8f3;
   --bg-elev: #ffffff;
   --surface: #ffffff;
   --surface-2: #f4f6f9;
@@ -34,11 +34,11 @@
   --text-2: #334155;
   --muted: #5f6b7d; /* 5:1 on white, 4.7:1 on --bg */
 
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
+  --primary: #1a5d40;
+  --primary-hover: #134a32;
   --primary-ink: #ffffff;
-  --primary-soft: #eef2ff;
-  --primary-soft-ink: #3730a3;
+  --primary-soft: #e9f4ee;
+  --primary-soft-ink: #134a32;
   --primary-50: #f3f9fd;
 
   --success: #15803d;
@@ -47,7 +47,7 @@
   --warn-soft: #fef5dc;
   --danger: #c0262d;
   --danger-soft: #fdecec;
-  --info-soft: #eef2ff;
+  --info-soft: #e9f4ee;
   --wa: #15803d; /* white text 5:1 */
   --wa-hover: #166534;
 
@@ -63,7 +63,7 @@
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, .05), 0 1px 3px rgba(15, 23, 42, .04);
   --shadow: 0 10px 30px -12px rgba(49, 46, 129, .18), 0 2px 6px rgba(15, 23, 42, .04);
   --shadow-lg: 0 24px 48px -16px rgba(15, 23, 42, .20), 0 8px 16px -8px rgba(15, 23, 42, .08);
-  --ring-color: #4f46e5; /* opaque focus ring: 3:1+ against page and surface */
+  --ring-color: #1a5d40; /* opaque focus ring: 3:1+ against page and surface */
   --ring: 0 0 0 3px var(--ring-color);
   --ease: cubic-bezier(.2, .7, .2, 1);
   --header-h: 64px;

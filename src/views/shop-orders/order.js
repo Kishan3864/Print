@@ -30,7 +30,7 @@ function actionLabel(from, to) {
 
 function actionButton(order, to, cls) {
   const cancel = to === 'cancelled';
-  return html`<button class="btn ${cancel ? 'btn-ghost sh-cancel' : cls}" type="submit" name="to" value="${to}"${cancel ? html` data-confirm="Cancel order #${order.order_no}? You can reopen it later."` : ''}>${icon(ACTION_ICON[to] || 'arrowRight')}<span>${actionLabel(order.status, to)}</span></button>`;
+  return html`<button class="btn ${cancel ? 'btn-ghost sh-cancel' : cls}" type="submit" name="to" value="${to}"${cancel ? html` data-confirm="Cancel order P-${order.order_no}? You can reopen it later."` : ''}>${icon(ACTION_ICON[to] || 'arrowRight')}<span>${actionLabel(order.status, to)}</span></button>`;
 }
 
 function eventView(e) {
@@ -72,11 +72,12 @@ function eventView(e) {
 
 function fileRow(order, f, { retention, extra = '' } = {}) {
   const gone = Boolean(f.deleted_at);
-  return html`<li class="sh-file${gone ? ' is-deleted' : ''}">
+  const ver = f.kind === 'customer' && (f.replaced_at ? `Replaced · v${f.version} · ` : f.version > 1 ? `v${f.version} · latest · ` : '');
+  return html`<li class="sh-file${gone || f.replaced_at ? ' is-deleted' : ''}">
     <span class="file-ext">${extOf(f.original_name) || 'file'}</span>
     <div class="sh-file-info">
       <span class="sh-file-name" title="${f.original_name}">${f.original_name}</span>
-      <span class="sh-file-meta">${extra}${formatBytes(f.size_bytes)}${gone ? ` · Auto-deleted after ${retention} days` : ''}</span>
+      <span class="sh-file-meta">${ver}${extra}${formatBytes(f.size_bytes)}${gone ? ` · Auto-deleted after ${retention} days` : ''}</span>
     </div>
     ${gone
       ? ''
@@ -102,7 +103,7 @@ export function orderView(d) {
   const telNo = waNumber(order.customer_mobile);
   const canCall = telNo.length >= 10;
   const no = order.order_no;
-  const chatLink = waLink(order.customer_mobile, `Hi ${order.customer_name}, about your order #${no} at ${shop.name}: `);
+  const chatLink = waLink(order.customer_mobile, `Hi ${order.customer_name}, about your order P-${no} at ${shop.name}: `);
 
   // ---------- next step + status actions ----------
   const lead = [];
@@ -159,6 +160,8 @@ export function orderView(d) {
       ${spec('Quantity', qtyText(order.quantity))}
       ${spec('Colour', COLOR_LABEL[order.color_mode] || order.color_mode, order.color_mode === 'color' ? ' is-color' : '')}
       ${spec('Sides', SIDES_LABEL[order.sides] || order.sides)}
+      ${order.paper ? spec('Paper', order.paper) : ''}
+      ${spec('Handover', order.delivery === 'delivery' ? 'Delivery' : 'Pickup')}
     </dl>
     ${order.notes
       ? html`<div class="sh-notes"><p class="sh-label">Customer notes</p><p class="sh-notes-text">${order.notes}</p></div>`
@@ -168,6 +171,9 @@ export function orderView(d) {
       ${customerFiles.length
         ? html`<ul class="sh-file-list">${customerFiles.map((f) => fileRow(order, f, { retention: shop.retention_days }))}</ul>`
         : html`<p class="muted mb-0">No files were uploaded with this order.</p>`}
+      ${customerFiles.some((f) => !f.deleted_at && !f.replaced_at)
+        ? html`<form method="post" action="${orderPath(order)}/reprint" class="mt-2">${csrfField(res)}<button class="btn btn-secondary btn-sm" type="submit" data-confirm="Create a new order with the same details and file?">${icon('refresh')}<span>Reprint as new order</span></button></form>`
+        : ''}
       <p class="hint sh-retention">${icon('clock')}<span>Files are deleted automatically ${plural(shop.retention_days, 'day')} after upload.</span></p>
     </div>
   </section>`;
@@ -182,7 +188,7 @@ export function orderView(d) {
     <div class="sh-card-body">
       ${preview
         ? html`<a class="sh-proof-preview" href="${filePath(order, latest)}?inline=1" target="_blank" rel="noopener">
-            <img src="${filePath(order, latest)}?inline=1" alt="Latest proof for order #${no}" loading="lazy" decoding="async">
+            <img src="${filePath(order, latest)}?inline=1" alt="Latest proof for order P-${no}" loading="lazy" decoding="async">
             <span class="sh-proof-zoom">${icon('eye')}<span>Open full size</span></span>
           </a>`
         : ''}
@@ -280,7 +286,7 @@ export function orderView(d) {
     <header class="sh-ohead">
       <div class="sh-ohead-main">
         <div class="sh-ohead-title">
-          <h1><span class="sr-only">Order </span><span class="order-no">#${no}</span></h1>
+          <h1><span class="sr-only">Order </span><span class="order-no">P-${no}</span></h1>
           ${statusPill(s)}${order.is_sample ? html`<span class="sh-row-sample">Sample</span>` : ''}
         </div>
         <p class="sh-ohead-cust"><b>${order.customer_name}</b><span class="sh-dot" aria-hidden="true">·</span><span>${order.size || 'Print'} · ${qtyText(order.quantity)}</span></p>

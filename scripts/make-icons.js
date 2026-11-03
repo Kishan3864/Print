@@ -9,16 +9,16 @@ import { encodePng, hexRgb } from '../src/lib/png.js';
 
 const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons');
 
-const INK = '#4f46e5';
+const INK = '#1a5d40';
 const TILE = { x: 0, y: 0, w: 64, h: 64, r: 16, color: INK };
 const STRIPES = [
   { x: 20, y: 10, w: 24, h: 14, r: 2, color: '#ffffff' },
   { x: 11, y: 21, w: 42, h: 21, r: 6, color: '#ffffff' },
-  { x: 18, y: 33, w: 28, h: 4, r: 2, color: '#312e81' },
-  { x: 43, y: 26, w: 4, h: 4, r: 2, color: '#f97316' },
+  { x: 18, y: 33, w: 28, h: 4, r: 2, color: '#0f2a1e' },
+  { x: 43, y: 26, w: 4, h: 4, r: 2, color: '#f5a524' },
   { x: 20, y: 35, w: 24, h: 19, r: 2, color: '#ffffff' },
-  { x: 24, y: 41, w: 16, h: 2.5, r: 1.2, color: '#c7d2fe' },
-  { x: 24, y: 46, w: 10, h: 2.5, r: 1.2, color: '#c7d2fe' },
+  { x: 24, y: 41, w: 16, h: 2.5, r: 1.2, color: '#cfe3d6' },
+  { x: 24, y: 46, w: 10, h: 2.5, r: 1.2, color: '#cfe3d6' },
 ];
 
 const inRoundRect = (u, v, s) => {
@@ -86,7 +86,7 @@ function render(size, shapes, { background = null, samples = 6 } = {}) {
 }
 
 const svg =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#4f46e5"/><rect x="20" y="10" width="24" height="14" rx="2" fill="#ffffff"/><rect x="11" y="21" width="42" height="21" rx="6" fill="#ffffff"/><rect x="18" y="33" width="28" height="4" rx="2" fill="#312e81"/><rect x="43" y="26" width="4" height="4" rx="2" fill="#f97316"/><rect x="20" y="35" width="24" height="19" rx="2" fill="#ffffff"/><rect x="24" y="41" width="16" height="2.5" rx="1.2" fill="#c7d2fe"/><rect x="24" y="46" width="10" height="2.5" rx="1.2" fill="#c7d2fe"/></svg>\n';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#1a5d40"/><rect x="20" y="10" width="24" height="14" rx="2" fill="#ffffff"/><rect x="11" y="21" width="42" height="21" rx="6" fill="#ffffff"/><rect x="18" y="33" width="28" height="4" rx="2" fill="#0f2a1e"/><rect x="43" y="26" width="4" height="4" rx="2" fill="#f5a524"/><rect x="20" y="35" width="24" height="19" rx="2" fill="#ffffff"/><rect x="24" y="41" width="16" height="2.5" rx="1.2" fill="#cfe3d6"/><rect x="24" y="46" width="10" height="2.5" rx="1.2" fill="#cfe3d6"/></svg>\n';
 
 const ICONS = [
   // Rounded tile, transparent corners ("any" purpose).

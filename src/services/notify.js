@@ -11,10 +11,10 @@ export const trackUrl = (shop, order) => config.baseUrl + trackPath(shop, order)
 
 // ---------- WhatsApp (wa.me with a pre-written message) ----------
 export const waProofText = (shop, order) =>
-  `Hi ${order.customer_name}, your proof for order #${order.order_no} at ${shop.name} is ready. Please check and approve here: ${trackUrl(shop, order)}`;
+  `Hi ${order.customer_name}, your proof for order P-${order.order_no} at ${shop.name} is ready. Please check and approve here: ${trackUrl(shop, order)}`;
 
 export const waReadyText = (shop, order) =>
-  `Hi ${order.customer_name}, your order #${order.order_no} at ${shop.name} is ready for pickup.` +
+  `Hi ${order.customer_name}, your order P-${order.order_no} at ${shop.name} is ready for pickup.` +
   (shop.address ? ` Address: ${shop.address}.` : '') +
   ` Details: ${trackUrl(shop, order)}`;
 
@@ -59,7 +59,7 @@ const sign = (shop) => `\n\n${shop.name}${shop.phone ? `\nPhone: ${shop.phone}` 
 /** kind: 'received' | 'proof' | 'ready'. Skipped for the demo shop or when no customer email. */
 export function emailCustomer(shop, order, kind) {
   if (shop.is_demo || !order.customer_email) return Promise.resolve(false);
-  const n = `#${order.order_no}`;
+  const n = `P-${order.order_no}`;
   const link = trackUrl(shop, order);
   const msg = {
     received: [`Order ${n} received – ${shop.name}`, `Hi ${order.customer_name},\n\nWe received your order ${n}. Track it here:\n${link}`],
@@ -74,8 +74,8 @@ export function emailShopNewOrder(shop, order) {
   if (shop.is_demo) return Promise.resolve(false);
   return sendMail({
     to: shop.email,
-    subject: `New order #${order.order_no} from ${order.customer_name}`,
-    text: `New order #${order.order_no}\n\nCustomer: ${order.customer_name} (${order.customer_mobile})\nSize: ${order.size} · Qty: ${order.quantity}\n\nOpen: ${config.baseUrl}/shop/orders/${order.order_no}\n\nBrighton Print`,
+    subject: `New order P-${order.order_no} from ${order.customer_name}`,
+    text: `New order P-${order.order_no}\n\nCustomer: ${order.customer_name} (${order.customer_mobile})\nSize: ${order.size} · Qty: ${order.quantity}\n\nOpen: ${config.baseUrl}/shop/orders/${order.order_no}\n\nBrighton Print`,
   });
 }
 

@@ -1,7 +1,7 @@
-import { html } from '../../lib/html.js';
+import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { ALLOWED_EXT, ACCEPT_ATTR, fileLimits } from '../../lib/uploads.js';
-import { sizeOptions } from '../../services/shops.js';
+import { paperOptions, sizeOptions } from '../../services/shops.js';
 import { shopPath } from '../../services/notify.js';
 import { formatBytes } from '../../lib/util.js';
 import { render } from '../layout.js';
@@ -63,7 +63,7 @@ const ERROR_TARGET = { name: 'cust-name', mobile: 'cust-mobile', email: 'cust-em
 export function orderFormPage(res, { shop, values = {}, errors = {}, owner = false }, status = 200) {
   const lim = fileLimits({ uploadShop: shop });
   const sizes = sizeOptions(shop);
-  const v = { name: '', mobile: '', email: '', quantity: 1, color_mode: 'color', sides: 'single', notes: '', ...values };
+  const v = { name: '', mobile: '', email: '', quantity: 1, color_mode: 'color', sides: 'single', paper: '', delivery: 'pickup', notes: '', ...values };
   if (!sizes.includes(v.size)) v.size = sizes[0];
   const multi = lim.files > 1;
   const errorKeys = Object.keys(errors).filter((k) => errors[k]);
@@ -220,6 +220,22 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
                   ${toggle('sides', 'both', v.sides, SIDES_LABEL.both)}
                 </div>
                 ${errors.sides ? html`<p class="field-error">${errors.sides}</p>` : ''}
+              </fieldset>
+            </div>
+            <div class="cust-opt-pair">
+              <div class="cust-opt">
+                <label class="cust-opt-label" for="cust-paper">Paper <span class="optional">optional</span></label>
+                <select id="cust-paper" name="paper">
+                  <option value="">Shop decides</option>
+                  ${paperOptions(shop).map((p) => html`<option value="${p}"${v.paper === p ? raw(' selected') : ''}>${p}</option>`)}
+                </select>
+              </div>
+              <fieldset class="cust-opt">
+                <legend class="cust-opt-label">Pickup or delivery</legend>
+                <div class="cust-togs">
+                  ${toggle('delivery', 'pickup', v.delivery, 'Pickup')}
+                  ${toggle('delivery', 'delivery', v.delivery, 'Delivery')}
+                </div>
               </fieldset>
             </div>
             ${field({
