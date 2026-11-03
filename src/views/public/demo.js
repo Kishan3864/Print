@@ -3,47 +3,59 @@ import { config } from '../../config.js';
 import { csrfField, icon } from '../components.js';
 
 const MB = (bytes) => Math.round(bytes / (1024 * 1024));
+const DM_URL = `https://ig.me/m/${config.instagram}`;
 
-/** /demo: pick a side: customer order form or one-click shop dashboard. */
+const STEPS = [
+  ['Place an order as a customer.', 'Upload a small file, pick size and quantity, note the order number.'],
+  ['See it in the dashboard.', 'Open the shop dashboard. The new order is at the top.'],
+  ['Send a proof.', 'Open the order and upload a proof file.'],
+  ['Approve it and mark ready.', 'Approve the proof on the customer page, then mark the order ready in the dashboard.'],
+];
+
+/** /demo: pick a side: customer order page or one-click shop dashboard. */
 export function demoPage(res, { realShop = null } = {}) {
   const files = config.limits.demoFiles;
   return html`<section class="container dm">
     <div class="dm-head">
-      <h1>Try PrintDesk live</h1>
-      <p class="lead">Play both sides of a real order: the customer who sends the file, and the shop that prints it.</p>
+      <h1>PrintDesk live demo</h1>
+      <p class="lead">Try it yourself with a sample print shop – no sign-up needed.</p>
     </div>
 
     <div class="dm-choices">
-      <a class="dm-card dm-card-customer" href="/${config.demo.slug}" target="_blank" rel="noopener">
-        <span class="dm-icon">${icon('upload')}</span>
-        <span class="dm-title">Try as customer</span>
-        <span class="dm-text">Open the demo shop's order link and send a test file, just like your customers will.</span>
-        <span class="dm-go"><span>Open order form</span>${icon('arrowRight')}</span>
-      </a>
+      <div class="dm-card">
+        <span class="dm-icon">${icon('user')}</span>
+        <h2>I am a customer</h2>
+        <p>See what your customers see: upload a file, choose size &amp; quantity, get an order number.</p>
+        <a class="btn btn-primary btn-lg btn-block dm-action" href="/${config.demo.slug}" target="_blank" rel="noopener"><span>Open customer page</span>${icon('arrowRight')}<span class="sr-only"> (opens in a new tab)</span></a>
+      </div>
 
-      <form method="post" action="/demo/login" class="dm-form">
-        ${csrfField(res)}
-        <button type="submit" class="dm-card dm-card-shop">
-          <span class="dm-icon">${icon('orders')}</span>
-          <span class="dm-title">Try the shop dashboard</span>
-          <span class="dm-text">One click, no password. See new orders, send proofs and the WhatsApp ready message.</span>
-          <span class="dm-go"><span>Open dashboard</span>${icon('arrowRight')}</span>
-        </button>
+      <div class="dm-card">
+        <span class="dm-icon">${icon('store')}</span>
+        <h2>I am the shop owner</h2>
+        <p>See your dashboard: new orders, send proof, mark ready, WhatsApp the customer.</p>
         ${realShop ? html`<p class="dm-note">${icon('info')}<span>You are logged in as ${realShop.name}. Opening the demo logs you out of your shop.</span></p>` : ''}
-      </form>
+        <form method="post" action="/demo/login" class="dm-action">
+          ${csrfField(res)}
+          <button type="submit" class="btn btn-primary btn-lg btn-block" data-loading="Opening dashboard…"><span>Open shop dashboard</span>${icon('arrowRight')}</button>
+        </form>
+      </div>
     </div>
 
-    <div class="dm-try card">
-      <h2>What to try</h2>
+    <div class="card dm-try">
+      <h2>Try this in 1 minute</h2>
       <ol class="dm-steps">
-        <li><b>Place an order as a customer.</b> Upload a small file, pick a size and quantity, and note your order number.</li>
-        <li><b>See it arrive in the dashboard.</b> A new-order alert shows up within about 30 seconds.</li>
-        <li><b>Send a proof, then approve it.</b> Upload a proof on the order page, then approve it from the customer's tracking page.</li>
-        <li><b>Mark it ready.</b> Tap the WhatsApp button and see the ready message, already written for you.</li>
+        ${STEPS.map(
+          ([title, text], i) => html`<li>
+            <span class="dm-step-no" aria-hidden="true">${i + 1}</span>
+            <span><b>${title}</b> ${text}</span>
+          </li>`
+        )}
       </ol>
-      <p class="dm-meta">${icon('refresh')}<span>Sample data, resets every ${config.demo.resetHours} hours. Demo uploads: ${files} file${files === 1 ? '' : 's'} up to ${MB(config.limits.demoFileBytes)} MB.</span></p>
     </div>
 
-    <p class="dm-foot">Like what you see? <a href="/register">Register your shop</a> and get your own order link.</p>
+    <div class="dm-info">
+      <p>Sample data · resets every ${config.demo.resetHours} hours · demo uploads: ${files} file${files === 1 ? '' : 's'} up to ${MB(config.limits.demoFileBytes)} MB</p>
+      <p>Want this for your shop? <a href="/register">Register</a> or DM <b>PRINT</b> to <a href="${DM_URL}" target="_blank" rel="noopener">@${config.instagram}</a></p>
+    </div>
   </section>`;
 }

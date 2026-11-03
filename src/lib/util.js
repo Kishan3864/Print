@@ -185,16 +185,6 @@ export function inkFor(hex) {
   return contrast(hex, '#0b1220') >= contrast(hex, '#ffffff') ? '#0b1220' : '#ffffff';
 }
 
-/** Brand colour for dark mode: lightened toward white in 10% steps until it reads on the dark surface. */
-export function brandForDark(hex) {
-  if (!isHexColor(hex)) return hex;
-  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  for (let t = 0; t <= 1.0001; t += 0.1) {
-    const d = '#' + ch.map((c) => Math.round(c + (255 - c) * t).toString(16).padStart(2, '0')).join('');
-    if (contrast(d, '#111a2b') >= 3) return d;
-  }
-  return '#ffffff';
-}
 
 // ---------- flash messages ----------
 export function flash(req, type, text) {

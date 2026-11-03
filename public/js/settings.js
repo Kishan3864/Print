@@ -46,7 +46,7 @@
   if (!form) return;
   var preview = $('[data-brand-preview]');
 
-  // Same colour rules as the server's /brand/<slug>.css (src/lib/util.js inkFor + brandForDark).
+  // Same colour rule as the server's /brand/<slug>.css (src/lib/util.js inkFor).
   var HEX = /^#?([0-9a-f]{6})$/i;
   function luminance(hex) {
     var c = [1, 3, 5].map(function (i) {
@@ -64,36 +64,17 @@
   function inkFor(hex) {
     return contrast(hex, '#0b1220') >= contrast(hex, '#ffffff') ? '#0b1220' : '#ffffff';
   }
-  // Dark mode: the colour lightened toward white in 10% steps until it reads on the dark surface.
-  function brandForDark(hex) {
-    var ch = [1, 3, 5].map(function (i) {
-      return parseInt(hex.slice(i, i + 2), 16);
-    });
-    for (var t = 0; t <= 1.0001; t += 0.1) {
-      var d =
-        '#' +
-        ch
-          .map(function (c) {
-            return ('0' + Math.round(c + (255 - c) * t).toString(16)).slice(-2);
-          })
-          .join('');
-      if (contrast(d, '#111a2b') >= 3) return d;
-    }
-    return '#ffffff';
-  }
-  var darkMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   var picker = $('[data-color-picker]', form);
   var text = $('[data-color-text]', form);
   var swatches = $$('[data-swatch]', form);
   var current = null;
 
-  // The preview shows what customers see in the current light/dark mode.
+  // The preview shows the brand colour exactly as customers see it.
   function paint() {
     if (!preview || !current) return;
-    var shown = darkMq && darkMq.matches ? brandForDark(current) : current;
-    preview.style.setProperty('--brand', shown);
-    preview.style.setProperty('--brand-ink', inkFor(shown));
+    preview.style.setProperty('--brand', current);
+    preview.style.setProperty('--brand-ink', inkFor(current));
   }
 
   function applyColor(hex, from) {
@@ -129,11 +110,6 @@
       applyColor(s.getAttribute('data-swatch'));
     });
   });
-  // Follow the phone/computer switching between light and dark mode.
-  if (darkMq) {
-    if (darkMq.addEventListener) darkMq.addEventListener('change', paint);
-    else if (darkMq.addListener) darkMq.addListener(paint);
-  }
 
   // Shop name + first address line.
   var nameIn = $('[data-preview-source="name"]', form);

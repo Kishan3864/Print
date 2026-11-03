@@ -6,7 +6,7 @@ import cookieSession from 'cookie-session';
 import { config, paths, ROOT } from './config.js';
 import { html } from './lib/html.js';
 import { csrfProtect, loadSession } from './lib/security.js';
-import { brandForDark, isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
+import { isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
 import { getShopBySlug, logoPath } from './services/shops.js';
 import { messagePage } from './views/layout.js';
 import publicRoutes from './routes/public.js';
@@ -79,8 +79,7 @@ export function createApp() {
     const shop = getShopBySlug(req.params.slug);
     const color = shop && isHexColor(shop.brand_color) ? shop.brand_color : '#0077b6';
     res.setHeader('Cache-Control', 'public, max-age=300');
-    const dark = brandForDark(color);
-    res.type('text/css').send(`:root{--brand:${color};--brand-ink:${inkFor(color)}}@media (prefers-color-scheme:dark){:root{--brand:${dark};--brand-ink:${inkFor(dark)}}}`);
+    res.type('text/css').send(`:root{--brand:${color};--brand-ink:${inkFor(color)}}`);
   });
 
   // Public shop logo (png/jpg/webp only, validated on upload).

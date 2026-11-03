@@ -174,9 +174,8 @@ export function page(res, opts) {
 <title>${fullTitle}</title>
 <meta name="description" content="${desc}">
 ${robots ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0a0f1a" media="(prefers-color-scheme: dark)">
-<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="only light">
 ${variant === 'customer'
   ? ''
   : raw(`<link rel="manifest" href="/manifest.webmanifest">
