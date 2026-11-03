@@ -80,7 +80,7 @@ function contactCard() {
     <div class="sup-contact-actions">
       <a class="btn btn-secondary btn-block" href="${DM_URL}" target="_blank" rel="noopener">${sicon('instagram')}<span>Instagram @${config.instagram}</span></a>
       ${config.supportWhatsapp
-        ? html`<a class="btn btn-wa btn-block" href="${waLink(config.supportWhatsapp, 'Hi Brighton Solution, I need help with PrintDesk.')}" target="_blank" rel="noopener">${icon('whatsapp')}<span>WhatsApp us</span></a>`
+        ? html`<a class="btn btn-wa btn-block" href="${waLink(config.supportWhatsapp, 'Hi Brighton Solution, I need help with Brighton Print.')}" target="_blank" rel="noopener">${icon('whatsapp')}<span>WhatsApp us</span></a>`
         : ''}
     </div>
   </section>`;

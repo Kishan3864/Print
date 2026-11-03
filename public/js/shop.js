@@ -1,4 +1,4 @@
-/* PrintDesk shop area (every /shop page): live new-order alert, relative times, proof file checks. CSP-safe. */
+/* Brighton Print shop area (every /shop page): live new-order alert, relative times, proof file checks. CSP-safe. */
 (function () {
   'use strict';
 

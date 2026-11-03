@@ -1,4 +1,4 @@
-# PrintDesk by Brighton Solution
+# Brighton Print by Brighton Solution
 
 Online order intake for print shops: one link for customers, one order number, one final file, with proofs, status tracking and WhatsApp updates.
 

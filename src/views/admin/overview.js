@@ -67,7 +67,7 @@ function kpiGrid({ rev, overview, demoActive, openTickets }) {
       ic: icon('clock'),
       href: listHref({ status: 'pending' }),
     })}
-    ${kpi({ label: 'Demo shops active', value: num(demoActive), sub: 'Leads trying PrintDesk', ic: icon('sparkle'), href: listHref({ status: 'demo' }) })}
+    ${kpi({ label: 'Demo shops active', value: num(demoActive), sub: 'Leads trying Brighton Print', ic: icon('sparkle'), href: listHref({ status: 'demo' }) })}
   </section>`;
 }
 

@@ -26,7 +26,7 @@ function ownDemoCard(res, { realShop, ownDemo }) {
     <div class="dm-own-copy">
       <span class="dm-own-tag">${icon('sparkle')}<span>Free demo · ${days} days</span></span>
       <h2>Create your own demo shop</h2>
-      <p>Your own PrintDesk with your shop's name – ready in a minute. No payment, no approval.</p>
+      <p>Your own Brighton Print with your shop's name – ready in a minute. No payment, no approval.</p>
       <ul class="dm-own-list">
         ${OWN_DEMO.map((t) => html`<li>${icon('check')}<span>${t}</span></li>`)}
       </ul>
@@ -50,7 +50,7 @@ export function demoPage(res, { realShop = null, ownDemo = null } = {}) {
   const files = config.limits.demoFiles;
   return html`<section class="container dm">
     <div class="dm-head">
-      <h1>PrintDesk live demo</h1>
+      <h1>Brighton Print live demo</h1>
       <p class="lead">Look around a sample print shop in one click, or create your own demo shop – free, no payment.</p>
     </div>
 

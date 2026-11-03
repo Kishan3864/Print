@@ -1,4 +1,4 @@
-/* PrintDesk – customer order form: selected-file list, step tracking, live
+/* Brighton Print – customer order form: selected-file list, step tracking, live
    order summary, client-side checks and upload with a real progress bar.
    Progressive enhancement: without this script the form still posts normally
    (multipart, CSRF token in the URL). */

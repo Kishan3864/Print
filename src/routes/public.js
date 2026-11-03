@@ -20,9 +20,9 @@ const DUMMY_HASH = '$2b$10$Oq4omzJceL.qkeHgnZw0jOh4q1PB8l01eLaLvnhRSX1m0iBEApB42
 // ---------- landing + demo ----------
 router.get('/', (req, res) => {
   render(res, {
-    title: 'PrintDesk',
+    title: 'Brighton Print',
     variant: 'public',
-    description: 'PrintDesk gives your print shop one order link. Customers upload files, every job gets an order number, the customer approves the proof, and the ready message goes out on WhatsApp in one tap.',
+    description: 'Brighton Print gives your print shop one order link. Customers upload files, every job gets an order number, the customer approves the proof, and the ready message goes out on WhatsApp in one tap.',
     bodyClass: 'page-landing',
     body: landingPage(),
   });
@@ -36,7 +36,7 @@ router.get('/demo', (req, res) => {
     title: 'Live demo',
     variant: 'public',
     active: 'demo',
-    description: `Try PrintDesk live: order as a customer, manage it from the shop dashboard, or create your own free demo shop for ${config.demo.trialDays} days. No payment needed.`,
+    description: `Try Brighton Print live: order as a customer, manage it from the shop dashboard, or create your own free demo shop for ${config.demo.trialDays} days. No payment needed.`,
     body: demoPage(res, { realShop, ownDemo }),
   });
 });

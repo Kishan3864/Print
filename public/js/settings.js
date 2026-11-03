@@ -1,4 +1,4 @@
-/* PrintDesk – shop settings, link page and counter poster (CSP-safe, no inline JS). */
+/* Brighton Print – shop settings, link page and counter poster (CSP-safe, no inline JS). */
 (function () {
   'use strict';
 

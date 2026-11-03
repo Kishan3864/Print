@@ -266,3 +266,21 @@
 .bl-manual-period { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); font-size: .88rem; color: var(--text-2); }
 .bl-manual-period .icon { width: 17px; height: 17px; margin-top: 2px; color: var(--muted); }
 .bl-manual-off { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- payment waiting / opening-soon screens ---------- */
+.wait-page { padding: 32px 16px 48px; }
+.wait-card { text-align: center; padding: 36px 28px; }
+.wait-card h1 { margin: 14px 0 8px; }
+.wait-card .lead { color: var(--text-2); margin-bottom: 20px; }
+.wait-spinner { width: 40px; height: 40px; margin: 0 auto; border-width: 3px; color: var(--primary); }
+.wait-steps { list-style: none; margin: 0 auto 18px; padding: 0; display: grid; gap: 8px; max-width: 360px; text-align: left; }
+.wait-steps li { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); font-weight: 600; font-size: .9rem; }
+.wait-steps li.is-done { color: var(--success); }
+.wait-steps li.is-current { color: var(--text); border-color: var(--primary); background: var(--primary-soft); }
+.soon-mark { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(135deg, var(--primary-soft), #fff1e6); color: var(--primary); }
+.soon-mark .icon { width: 30px; height: 30px; }
+.soon-list { list-style: none; margin: 0 auto 22px; padding: 0; display: grid; gap: 10px; max-width: 440px; text-align: left; }
+.soon-list li { display: flex; gap: 10px; align-items: flex-start; font-size: .92rem; color: var(--text-2); }
+.soon-list .icon { flex: none; margin-top: 2px; color: var(--primary); width: 18px; height: 18px; }
+.soon-actions { justify-content: center; margin-bottom: 14px; }
+@media (max-width: 480px) { .wait-card { padding: 28px 18px; } .soon-actions .btn { width: 100%; } }

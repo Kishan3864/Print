@@ -89,7 +89,7 @@ export function createApp() {
   // Per-shop brand colour (keeps CSP free of inline styles).
   app.get(`/brand/:slug(${SLUG_ROUTE}).css`, (req, res) => {
     const shop = getShopBySlug(req.params.slug);
-    const color = shop && isHexColor(shop.brand_color) ? shop.brand_color : '#0077b6';
+    const color = shop && isHexColor(shop.brand_color) ? shop.brand_color : '#4f46e5';
     res.setHeader('Cache-Control', 'public, max-age=300');
     res.type('text/css').send(`:root{--brand:${color};--brand-ink:${inkFor(color)}}`);
   });
@@ -196,7 +196,7 @@ export function createApp() {
       title: 'Page not found',
       text: 'This link does not exist. Please check the address or ask the shop for their correct link.',
       iconName: 'search',
-      action: html`<a class="btn btn-primary" href="/">Go to PrintDesk</a>`,
+      action: html`<a class="btn btn-primary" href="/">Go to Brighton Print</a>`,
     });
   });
 

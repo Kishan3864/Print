@@ -44,7 +44,7 @@ export const isToday = (iso) => ymd(new Date(iso)) === ymd();
 
 /** Letter avatar on the shop's brand colour (SVG attributes, no inline styles). */
 export function letterAvatar(name, color, size = 36) {
-  const bg = isHexColor(color) ? color : '#0077b6';
+  const bg = isHexColor(color) ? color : '#4f46e5';
   const letter = (Array.from(String(name || '').trim())[0] || '?').toUpperCase();
   return html`<span class="sup-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" width="${size}" height="${size}" focusable="false"><rect width="40" height="40" rx="20" fill="${bg}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="800" fill="${inkFor(bg)}">${letter}</text></svg></span>`;
 }

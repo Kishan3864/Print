@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS shops (
   plan            TEXT CHECK (plan IS NULL OR plan IN ('starter','pro','business')),
   paid_until      TEXT,
   is_demo         INTEGER NOT NULL DEFAULT 0,
-  brand_color     TEXT NOT NULL DEFAULT '#0077b6',
+  brand_color     TEXT NOT NULL DEFAULT '#4f46e5',
   logo_file       TEXT,
   phone           TEXT NOT NULL DEFAULT '',
   address         TEXT NOT NULL DEFAULT '',

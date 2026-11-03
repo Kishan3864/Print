@@ -38,28 +38,28 @@ const filled = (v) => Boolean(v && String(v).trim());
 /** Pre-written WhatsApp text for the owner, matching the account state. */
 function ownerMessage(shop, state) {
   const hi = `Hi ${ownerName(shop)},`;
-  const sign = '\n\n– Brighton Solution (PrintDesk)';
+  const sign = '\n\n– Brighton Solution (Brighton Print)';
   const billing = `${config.baseUrl}/shop/billing`;
   const link = customerLink(shop).href;
   let text;
   if (shop.is_demo) {
     text = state === 'expired'
-      ? `${hi} your PrintDesk demo for ${shop.name} has ended. Go live here to keep your link and start taking real orders: ${billing}`
-      : `${hi} your PrintDesk demo for ${shop.name} is running. Try your customer link: ${link}\nWhen you are ready, go live here: ${billing}`;
+      ? `${hi} your Brighton Print demo for ${shop.name} has ended. Go live here to keep your link and start taking real orders: ${billing}`
+      : `${hi} your Brighton Print demo for ${shop.name} is running. Try your customer link: ${link}\nWhen you are ready, go live here: ${billing}`;
   } else {
     text = {
-      pending: `${hi} thanks for registering ${shop.name} on PrintDesk. Choose a plan here to open your order link: ${billing}`,
-      active: `${hi} your PrintDesk account for ${shop.name} is active.\nLog in: ${loginUrl()}\nYour customer order link: ${link}`,
-      expired: `${hi} your PrintDesk plan for ${shop.name} ended on ${formatDate(shop.paid_until)}, so your order link is closed. Renew here: ${billing}`,
-      paused: `${hi} your PrintDesk account for ${shop.name} is paused, so your order link is not taking new orders. Reply here and we will help.`,
-      rejected: `${hi} this is Brighton Solution about your PrintDesk registration for ${shop.name}.`,
+      pending: `${hi} thanks for registering ${shop.name} on Brighton Print. Choose a plan here to open your order link: ${billing}`,
+      active: `${hi} your Brighton Print account for ${shop.name} is active.\nLog in: ${loginUrl()}\nYour customer order link: ${link}`,
+      expired: `${hi} your Brighton Print plan for ${shop.name} ended on ${formatDate(shop.paid_until)}, so your order link is closed. Renew here: ${billing}`,
+      paused: `${hi} your Brighton Print account for ${shop.name} is paused, so your order link is not taking new orders. Reply here and we will help.`,
+      rejected: `${hi} this is Brighton Solution about your Brighton Print registration for ${shop.name}.`,
     }[state];
   }
-  return (text || `${hi} this is Brighton Solution from PrintDesk.`) + sign;
+  return (text || `${hi} this is Brighton Solution from Brighton Print.`) + sign;
 }
 
 function revealCard(shop, password) {
-  const msg = `Hi ${ownerName(shop)}, your PrintDesk password has been reset.\n\nLog in: ${loginUrl()}\nEmail: ${shop.email}\nTemporary password: ${password}\n\nPlease change it in Settings after you log in.\n\n– Brighton Solution (PrintDesk)`;
+  const msg = `Hi ${ownerName(shop)}, your Brighton Print password has been reset.\n\nLog in: ${loginUrl()}\nEmail: ${shop.email}\nTemporary password: ${password}\n\nPlease change it in Settings after you log in.\n\n– Brighton Solution (Brighton Print)`;
   return html`<section class="card adm-reveal" role="alert" aria-labelledby="reveal-h">
     <div class="adm-reveal-head">
       <span class="adm-reveal-ic" aria-hidden="true">${adminIcon('key')}</span>
@@ -338,7 +338,7 @@ const pauseForm = (res, shop) =>
   </form>`;
 
 const rejectForm = (res, shop) =>
-  html`<form method="post" action="/admin/shops/${shop.id}/reject" data-confirm="Block ${shop.name}? They will see a “not active” screen and cannot use PrintDesk.">
+  html`<form method="post" action="/admin/shops/${shop.id}/reject" data-confirm="Block ${shop.name}? They will see a “not active” screen and cannot use Brighton Print.">
     ${csrfField(res)}
     <button class="btn btn-danger btn-block" type="submit">${icon('x')}<span>Reject account</span></button>
   </form>`;

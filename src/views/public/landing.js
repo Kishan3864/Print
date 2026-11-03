@@ -117,7 +117,7 @@ function audience() {
     <div class="container">
       <div class="lp-head">
         <h2 id="who-title">Who it is for</h2>
-        <p>If customers send you files to print, PrintDesk fits your shop.</p>
+        <p>If customers send you files to print, Brighton Print fits your shop.</p>
       </div>
       <ul class="lp-chips">
         ${AUDIENCE.map((label) => html`<li>${icon('check')}<span>${label}</span></li>`)}
@@ -205,7 +205,7 @@ function faq() {
     ['How big can the files be?', html`Up to ${MB(config.limits.orderFileBytes)} MB per file and ${config.limits.orderFiles} files per order. That is enough for big CorelDRAW or Photoshop files.`],
     ['How long are files kept?', html`Files are deleted automatically after 15 days by default. You can change this in Settings. Order details and history stay.`],
     ['Can I use my own logo and colour?', html`Yes. Your order page shows your shop name, logo and brand colour.`],
-    ['Does it work on mobile?', html`Yes. Customers order from any phone, and you can run the whole counter from yours. PrintDesk also installs like an app, straight from the browser.`],
+    ['Does it work on mobile?', html`Yes. Customers order from any phone, and you can run the whole counter from yours. Brighton Print also installs like an app, straight from the browser.`],
     ['How do I get started?', html`<a href="/register">Register your shop</a> with a short form, choose a plan and pay online. Your order link opens right away – share it and start taking orders.`],
     ['How do I pay?', html`Online through PayU with UPI, debit or credit card, or net banking. Pay monthly or yearly and renew anytime from your dashboard. See the <a href="/#pricing">plans and prices</a>.`],
     ['What happens when my plan ends?', html`Your order link stops taking new orders and your dashboard asks you to renew. Your orders and settings are kept – renew and the link opens again straight away. We remind you before the end date.`],

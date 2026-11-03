@@ -31,7 +31,7 @@ export function createTicket(shop, { subject, category, message }) {
   })();
   notifyAdmin({ kind: 'support', title: `New ticket from ${shop.name}`, body: subject, link: `/admin/tickets/${id}` });
   if (config.adminEmail) {
-    sendMail({ to: config.adminEmail, subject: `[PrintDesk support] ${shop.name}: ${subject}`, text: `${message}\n\nOpen: ${config.adminUrl}/tickets/${id}` });
+    sendMail({ to: config.adminEmail, subject: `[Brighton Print support] ${shop.name}: ${subject}`, text: `${message}\n\nOpen: ${config.adminUrl}/tickets/${id}` });
   }
   publishShop(shop.id);
   return getTicket(id);

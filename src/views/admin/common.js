@@ -113,7 +113,7 @@ export function shopAvatar(shop, size = 38, cls = '') {
   if (shop.logo_file) {
     return html`<span class="${klass}"><img src="/logo/${shop.slug}?v=${shop.logo_file.slice(0, 8)}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async"></span>`;
   }
-  const bg = isHexColor(shop.brand_color) ? shop.brand_color : '#0077b6';
+  const bg = isHexColor(shop.brand_color) ? shop.brand_color : '#4f46e5';
   const letter = (Array.from(String(shop.name || '').trim())[0] || '?').toUpperCase();
   return html`<span class="${klass}" aria-hidden="true"><svg viewBox="0 0 40 40" width="${size}" height="${size}" focusable="false"><rect width="40" height="40" fill="${bg}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="800" fill="${inkFor(bg)}">${letter}</text></svg></span>`;
 }

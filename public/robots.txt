@@ -1,4 +1,4 @@
-# PrintDesk - customer order and tracking pages also send "noindex".
+# Brighton Print - customer order and tracking pages also send "noindex".
 User-agent: *
 Allow: /
 Disallow: /shop$

@@ -286,15 +286,15 @@ function activate(req, res) {
   approveShop(shop.id, { plan, paid_until: until });
   notifyShop(shop.id, {
     kind: 'success',
-    title: 'Your PrintDesk is active',
+    title: 'Your Brighton Print is active',
     body: `${planName(plan)} plan active till ${formatDate(until)}. Your order link is taking orders.`,
     link: '/shop',
   });
   if (shop.status === 'pending') {
     sendMail({
       to: shop.email,
-      subject: 'Your PrintDesk account is active',
-      text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk account is active till ${formatDate(until)}.\nLog in: ${config.baseUrl}/login\nYour customer order link: ${orderFormUrl(shop)}\n\nBrighton Solution`,
+      subject: 'Your Brighton Print account is active',
+      text: `Hi ${shop.owner_name || shop.name},\n\nYour Brighton Print account is active till ${formatDate(until)}.\nLog in: ${config.baseUrl}/login\nYour customer order link: ${orderFormUrl(shop)}\n\nBrighton Solution`,
     });
   }
   finish(req, res, shop, 'success', `${shop.name} is active (${planName(plan)}, till ${formatDate(until)}). Their order link is taking orders.`);

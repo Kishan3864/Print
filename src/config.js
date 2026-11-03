@@ -46,7 +46,7 @@ export const config = {
     secure: bool(env.SMTP_SECURE, false),
     user: env.SMTP_USER || '',
     pass: env.SMTP_PASS || '',
-    from: env.SMTP_FROM || 'PrintDesk <no-reply@brightonsolution.com>',
+    from: env.SMTP_FROM || 'Brighton Print <no-reply@brightonsolution.com>',
   },
   // Admin panel lives on its own host in production (e.g. adminprint.brightonsolution.com).
   // Empty = served at /admin on the main host (local development).
@@ -55,6 +55,9 @@ export const config = {
     key: env.PAYU_KEY || '',
     salt: env.PAYU_SALT || '',
     test: bool(env.PAYU_TEST, false),
+    // Until PayU approves live payments keep this false: only PAYMENT_TESTERS can pay.
+    open: bool(env.PAYMENTS_OPEN, false),
+    testers: (env.PAYMENT_TESTERS || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean),
   },
   demo: {
     slug: 'demo-print-studio',

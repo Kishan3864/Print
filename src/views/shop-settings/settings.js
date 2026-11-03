@@ -10,9 +10,9 @@ import { shopIcon } from '../chrome/shop.js';
 
 // Quick colour picks (CSS classes .set-sw-<n> paint them, CSP forbids inline styles).
 const SWATCHES = [
-  ['#0077b6', 'Ocean blue'],
-  ['#00aeef', 'Cyan'],
-  ['#ec008c', 'Magenta'],
+  ['#4f46e5', 'Ocean blue'],
+  ['#6366f1', 'Cyan'],
+  ['#f97316', 'Magenta'],
   ['#e11d48', 'Red'],
   ['#f97316', 'Orange'],
   ['#16a34a', 'Green'],
@@ -34,7 +34,7 @@ const section = (title, text, body) => html`<fieldset class="set-section">
 </fieldset>`;
 
 function preview(shop, values) {
-  const color = isHexColor(values.brand_color) ? values.brand_color : '#0077b6';
+  const color = isHexColor(values.brand_color) ? values.brand_color : '#4f46e5';
   const firstLine = String(values.address || '').split('\n')[0];
   const initial = (values.name || shop.name || '?').trim().charAt(0).toUpperCase() || '?';
   return html`<figure class="set-preview-wrap">
@@ -86,7 +86,7 @@ function logoField(res, shop, error) {
 }
 
 function colorField(values, error) {
-  const color = isHexColor(values.brand_color) ? values.brand_color : '#0077b6';
+  const color = isHexColor(values.brand_color) ? values.brand_color : '#4f46e5';
   return html`<div class="field${error ? ' has-error' : ''}">
     <label for="brand_color">Brand colour</label>
     <div class="set-swatches" role="group" aria-label="Suggested colours">

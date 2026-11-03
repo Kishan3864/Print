@@ -10,6 +10,7 @@ import {
   isSampleShop,
   priceRupees,
   payuEnabled,
+  paymentsOpenFor,
   payuForm,
   shopPayments,
   startPayuPayment,
@@ -43,7 +44,7 @@ router.get('/billing', (req, res) => {
       sample: isSampleShop(shop),
       plans: activePlans(),
       payments: shopPayments(shop.id).filter((p) => p.status === 'paid'),
-      razorpayOn: payuEnabled(),
+      razorpayOn: true,
       choice,
     })
   );
@@ -67,10 +68,7 @@ router.post('/billing/pay', actionLimiter, (req, res) => {
     flash(req, 'error', 'Please choose a plan and Monthly or Yearly.');
     return res.redirect(303, BILLING);
   }
-  if (!payuEnabled()) {
-    flash(req, 'info', 'Online payment is being set up. Please pay by UPI to Brighton Solution and raise a ticket with the screenshot.');
-    return res.redirect(303, BILLING);
-  }
+  if (!paymentsOpenFor(shop)) return res.redirect(303, `${BILLING}/soon?plan=${plan.key}&cycle=${cycle}`);
   try {
     const payment = startPayuPayment(shop, plan.key, cycle);
     res.redirect(303, `${BILLING}/checkout/${payment.id}`);
@@ -78,6 +76,34 @@ router.post('/billing/pay', actionLimiter, (req, res) => {
     flash(req, 'error', err.message || 'Could not start the payment. Please try again in a minute.');
     res.redirect(303, BILLING);
   }
+});
+
+// Shown while online payments are on hold (PayU live approval pending).
+router.get('/billing/soon', (req, res) => {
+  const plan = activePlans().find((p) => p.key === req.query.plan);
+  const cycle = Object.hasOwn(CYCLES, req.query.cycle) ? req.query.cycle : 'monthly';
+  render(res, {
+    title: 'Payments opening soon',
+    variant: 'shop',
+    active: 'billing',
+    body: html`<section class="container-narrow wait-page">
+      <div class="card card-pad wait-card soon-card">
+        <div class="soon-mark" aria-hidden="true">${icon('sparkle')}</div>
+        <h1>You're almost there</h1>
+        <p class="lead">Thank you for choosing ${plan ? html`the <b>${plan.name}</b> plan (${CYCLES[cycle]})` : 'Brighton Print'}. We are switching on secure online payments right now – it will be ready very soon.</p>
+        <ul class="soon-list">
+          <li>${icon('check')}<span>Your account and your shop link are saved – nothing is lost.</span></li>
+          <li>${icon('clock')}<span>Please check back in a little while and tap <b>Pay</b> again.</span></li>
+          <li>${icon('bell')}<span>Want to start today? Message us and we will switch your shop on personally.</span></li>
+        </ul>
+        <div class="btn-row soon-actions">
+          <a class="btn btn-primary btn-lg" href="/shop/support?new=billing">${icon('info')}<span>Message us</span></a>
+          <a class="btn btn-secondary btn-lg" href="/shop/billing">Back to plans</a>
+        </div>
+        <p class="hint">Thank you for your patience – we are happy to have you with us.</p>
+      </div>
+    </section>`,
+  });
 });
 
 // Signed form that the browser posts to PayU (auto-submitted by /js/payu.js).

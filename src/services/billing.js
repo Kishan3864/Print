@@ -177,9 +177,9 @@ export function markPaid(paymentId, { providerPaymentId = null, amountPaise = nu
     link: `/admin/shops/${shop.id}`,
   });
   if (config.adminEmail && payment.method !== 'manual') {
-    sendMail({ to: config.adminEmail, subject: `PrintDesk payment ${amount} – ${shop.name}`, text: `${shop.name} paid ${amount} for ${plan?.name || payment.plan} (${CYCLES[payment.cycle]}). Active till ${formatDate(end)}.\n\n${config.adminUrl}/shops/${shop.id}` });
+    sendMail({ to: config.adminEmail, subject: `Brighton Print payment ${amount} – ${shop.name}`, text: `${shop.name} paid ${amount} for ${plan?.name || payment.plan} (${CYCLES[payment.cycle]}). Active till ${formatDate(end)}.\n\n${config.adminUrl}/shops/${shop.id}` });
   }
-  sendMail({ to: shop.email, subject: `PrintDesk receipt – ${amount}`, text: `Hi ${shop.owner_name || shop.name},\n\nWe received ${amount} for the ${plan?.name || payment.plan} plan (${CYCLES[payment.cycle]}). Your PrintDesk is active till ${formatDate(end)}.\n\nReceipt: ${config.baseUrl}/shop/billing/receipt/${payment.id}\n\nBrighton Solution` });
+  sendMail({ to: shop.email, subject: `Brighton Print receipt – ${amount}`, text: `Hi ${shop.owner_name || shop.name},\n\nWe received ${amount} for the ${plan?.name || payment.plan} plan (${CYCLES[payment.cycle]}). Your Brighton Print is active till ${formatDate(end)}.\n\nReceipt: ${config.baseUrl}/shop/billing/receipt/${payment.id}\n\nBrighton Solution` });
   publishShop(shop.id);
   return getPayment(payment.id);
 }
@@ -200,6 +200,8 @@ export function recordManualPayment(shop, { planKey, cycle, amountRupees, note =
 // The shop's browser POSTs a signed form to PayU; PayU POSTs the result back to
 // /pay/payu/return (verified with the reverse hash). No card data touches us.
 export const payuEnabled = () => config.payu.enabled;
+/** Real payments are on hold until PAYMENTS_OPEN=true; listed tester emails can always pay. */
+export const paymentsOpenFor = (shop) => config.payu.enabled && (config.payu.open || config.payu.testers.includes(String(shop.email).toLowerCase()));
 const sha512 = (s) => crypto.createHash('sha512').update(s).digest('hex');
 const payuAmount = (p) => (p.amount_paise / 100).toFixed(2);
 
@@ -219,7 +221,7 @@ export function payuForm(payment, shop) {
     key: config.payu.key,
     txnid: payment.reference,
     amount: payuAmount(payment),
-    productinfo: `PrintDesk ${plan?.name || payment.plan} ${CYCLES[payment.cycle]}`,
+    productinfo: `Brighton Print ${plan?.name || payment.plan} ${CYCLES[payment.cycle]}`,
     firstname: String(shop.owner_name || shop.name).replace(/[^A-Za-z0-9 .]/g, '').slice(0, 60) || 'Customer',
     email: shop.email,
     phone: waNumber(shop.mobile).slice(-10),
@@ -263,13 +265,13 @@ export function runReminders() {
     }
     if (config.reminderDays.includes(left)) {
       const fresh = notifyShop(shop.id, { kind: 'warn', title: `Your plan ends in ${left} day${left === 1 ? '' : 's'}`, body: `Renew before ${formatDate(shop.paid_until)} to keep taking orders.`, link: '/shop/billing', dedupe: `remind:${shop.id}:${shop.paid_until}:${left}` });
-      if (fresh) sendMail({ to: shop.email, subject: `PrintDesk: your plan ends in ${left} day${left === 1 ? '' : 's'}`, text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk plan ends on ${formatDate(shop.paid_until)}. Renew here to keep your order link open:\n${config.baseUrl}/shop/billing\n\nBrighton Solution` });
+      if (fresh) sendMail({ to: shop.email, subject: `Brighton Print: your plan ends in ${left} day${left === 1 ? '' : 's'}`, text: `Hi ${shop.owner_name || shop.name},\n\nYour Brighton Print plan ends on ${formatDate(shop.paid_until)}. Renew here to keep your order link open:\n${config.baseUrl}/shop/billing\n\nBrighton Solution` });
     }
     if (shop.paid_until < today) {
       const fresh = notifyShop(shop.id, { kind: 'warn', title: 'Your plan has ended', body: 'Your order link is closed. Renew to switch it back on.', link: '/shop/billing', dedupe: `expired:${shop.id}:${shop.paid_until}` });
       if (fresh) {
         notifyAdmin({ kind: 'warn', title: `${shop.name}'s plan expired`, body: `Ended ${formatDate(shop.paid_until)}`, link: `/admin/shops/${shop.id}`, dedupe: `admin-expired:${shop.id}:${shop.paid_until}` });
-        sendMail({ to: shop.email, subject: 'PrintDesk: your plan has ended', text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk plan ended on ${formatDate(shop.paid_until)}, so your order link is closed. Renew to switch it back on:\n${config.baseUrl}/shop/billing\n\nBrighton Solution` });
+        sendMail({ to: shop.email, subject: 'Brighton Print: your plan has ended', text: `Hi ${shop.owner_name || shop.name},\n\nYour Brighton Print plan ended on ${formatDate(shop.paid_until)}, so your order link is closed. Renew to switch it back on:\n${config.baseUrl}/shop/billing\n\nBrighton Solution` });
       }
     }
   }

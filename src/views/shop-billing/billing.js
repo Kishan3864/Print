@@ -50,7 +50,7 @@ function statusCard(shop, mode) {
         <div class="bl-status-copy">
           <p class="bl-kicker">Sample shop</p>
           <h2 class="bl-status-title" id="bl-status-title">This is the shared demo shop</h2>
-          <p class="bl-status-text">Everyone trying PrintDesk uses this shop, so payments are switched off here and the sample data resets every ${config.demo.resetHours} hours. Want to try it with your own shop name and link?</p>
+          <p class="bl-status-text">Everyone trying Brighton Print uses this shop, so payments are switched off here and the sample data resets every ${config.demo.resetHours} hours. Want to try it with your own shop name and link?</p>
           <div class="btn-row bl-status-actions">
             <a class="btn btn-primary" href="/register">${icon('sparkle')}<span>Register your shop</span></a>
             <a class="btn btn-secondary" href="/register">${icon('store')}<span>Register my shop</span></a>
@@ -99,7 +99,7 @@ function statusCard(shop, mode) {
       <div class="bl-status-main">
         <span class="bl-status-ic">${icon('store')}</span>
         <div class="bl-status-copy">
-          <p class="bl-kicker">Welcome to PrintDesk</p>
+          <p class="bl-kicker">Welcome to Brighton Print</p>
           <h2 class="bl-status-title" id="bl-status-title">Choose a plan to start taking orders</h2>
           <p class="bl-status-text">Your order link opens the moment your payment is done:</p>
           <p class="bl-golive-link"><span class="mono">${orderFormUrl(shop)}</span></p>
@@ -316,7 +316,7 @@ export function billingView(res, { shop, state, sample, plans, payments, razorpa
       <header class="page-head bl-head">
         <div>
           <h1>Plan &amp; billing</h1>
-          <p>Your PrintDesk plan, payments and receipts.</p>
+          <p>Your Brighton Print plan, payments and receipts.</p>
         </div>
       </header>
       ${statusCard(shop, mode)}

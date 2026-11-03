@@ -30,7 +30,7 @@ export const authHeader = () =>
 export function siteFooter() {
   return html`<footer class="site-footer">
     <div class="container footer-row">
-      <div class="footer-brand">${logoMark(22)}<span>PrintDesk by Brighton Solution · <a href="${config.companyUrl}" target="_blank" rel="noopener">brightonsolution.com</a></span></div>
+      <div class="footer-brand">${logoMark(22)}<span>© Brighton Solution · <a href="${config.companyUrl}" target="_blank" rel="noopener">brightonsolution.com</a></span></div>
       <nav class="footer-nav" aria-label="Footer">
         <a href="/demo">Live demo</a>
         <a href="/#pricing">Pricing</a>

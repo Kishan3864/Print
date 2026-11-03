@@ -10,7 +10,7 @@ export function loginView(res, { email = '', error = '', disabled = false } = {}
       <h1>Admin sign in</h1>
       <p class="adm-login-lead">Manage shops, payments and support for Brighton Solution.</p>
       ${disabled
-        ? alert('warn', 'Admin login is switched off. Set ADMIN_EMAIL and ADMIN_PASSWORD in the server’s .env file, then restart PrintDesk.')
+        ? alert('warn', 'Admin login is switched off. Set ADMIN_EMAIL and ADMIN_PASSWORD in the server’s .env file, then restart Brighton Print.')
         : html`${error ? alert('danger', error) : ''}
           <form method="post" action="/admin/login" class="adm-login-form">
             ${csrfField(res)}

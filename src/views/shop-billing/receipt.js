@@ -28,7 +28,7 @@ export function receiptView({ shop, payment }) {
         <header class="bl-receipt-head">
           <div class="bl-receipt-brand">
             ${logoMark(40)}
-            <div><b>PrintDesk</b><span>by Brighton Solution</span></div>
+            <div><b>Brighton Print</b><span>by Brighton Solution</span></div>
           </div>
           <div class="bl-receipt-title">
             <h1 id="bl-receipt-title">Receipt</h1>
@@ -51,7 +51,7 @@ export function receiptView({ shop, payment }) {
           </section>
           <section>
             <h2>From</h2>
-            <p><b>Brighton Solution</b><br>PrintDesk – order intake for print shops</p>
+            <p><b>Brighton Solution</b><br>Brighton Print – order intake for print shops</p>
             <p class="bl-receipt-contact">${companyHost}<br>Instagram @${config.instagram}</p>
           </section>
         </div>
@@ -60,7 +60,7 @@ export function receiptView({ shop, payment }) {
           <thead><tr><th scope="col">Description</th><th scope="col">Period</th><th scope="col" class="num">Amount</th></tr></thead>
           <tbody>
             <tr>
-              <td><b>PrintDesk ${planName} plan</b><span>${cycleLabel(payment.cycle)} subscription</span></td>
+              <td><b>Brighton Print ${planName} plan</b><span>${cycleLabel(payment.cycle)} subscription</span></td>
               <td>${periodText(payment)}</td>
               <td class="num">${amount}</td>
             </tr>
@@ -71,7 +71,7 @@ export function receiptView({ shop, payment }) {
         ${payment.note && payment.method === 'manual' ? html`<p class="bl-receipt-note"><b>Note:</b> ${payment.note}</p>` : ''}
 
         <footer class="bl-receipt-foot">
-          <p>Thank you for using PrintDesk. This payment covers your plan till <b>${formatDate(payment.period_end)}</b>.</p>
+          <p>Thank you for using Brighton Print. This payment covers your plan till <b>${formatDate(payment.period_end)}</b>.</p>
           <p class="muted">Computer-generated receipt, no signature needed. Issued ${formatDateTime(payment.paid_at)}.</p>
         </footer>
       </article>

@@ -48,7 +48,7 @@ export function registerPage(res, { values = {}, errors = {}, demo = false, choi
       ${demo
         ? html`<span class="au-demo-tag">${icon('sparkle')}<span>Free demo · ${days} days</span></span>
             <h1>Create your demo shop</h1>
-            <p class="lead">Your own PrintDesk with your shop's name and link – ready right away. No payment, no approval.</p>`
+            <p class="lead">Your own Brighton Print with your shop's name and link – ready right away. No payment, no approval.</p>`
         : html`<h1>Register your shop</h1>
             <p class="lead">Get your own order link where customers send files to print. Choose a plan and pay to activate – takes 1 minute.</p>`}
       ${demoShop && !demo
@@ -160,6 +160,6 @@ export function loginPage(res, { email = '', next = '', error = '', demoSession 
       </form>
       <p class="au-help">${icon('info')}<span>Forgot your password? DM <a href="${DM_URL}" target="_blank" rel="noopener">@${config.instagram}</a> on Instagram and we will reset it for you.</span></p>
     </div>
-    <p class="auth-foot">New to PrintDesk? <a href="/register">Register your shop</a><span class="au-sep" aria-hidden="true"></span><a href="/demo">Try the live demo</a></p>
+    <p class="auth-foot">New to Brighton Print? <a href="/register">Register your shop</a><span class="au-sep" aria-hidden="true"></span><a href="/demo">Try the live demo</a></p>
   </section>`;
 }

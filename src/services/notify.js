@@ -54,7 +54,7 @@ export async function sendMail({ to, subject, text, replyTo }) {
   }
 }
 
-const sign = (shop) => `\n\n${shop.name}${shop.phone ? `\nPhone: ${shop.phone}` : ''}${shop.address ? `\n${shop.address}` : ''}\n\nSent via PrintDesk`;
+const sign = (shop) => `\n\n${shop.name}${shop.phone ? `\nPhone: ${shop.phone}` : ''}${shop.address ? `\n${shop.address}` : ''}\n\nSent via Brighton Print`;
 
 /** kind: 'received' | 'proof' | 'ready'. Skipped for the demo shop or when no customer email. */
 export function emailCustomer(shop, order, kind) {
@@ -75,7 +75,7 @@ export function emailShopNewOrder(shop, order) {
   return sendMail({
     to: shop.email,
     subject: `New order #${order.order_no} from ${order.customer_name}`,
-    text: `New order #${order.order_no}\n\nCustomer: ${order.customer_name} (${order.customer_mobile})\nSize: ${order.size} · Qty: ${order.quantity}\n\nOpen: ${config.baseUrl}/shop/orders/${order.order_no}\n\nPrintDesk`,
+    text: `New order #${order.order_no}\n\nCustomer: ${order.customer_name} (${order.customer_mobile})\nSize: ${order.size} · Qty: ${order.quantity}\n\nOpen: ${config.baseUrl}/shop/orders/${order.order_no}\n\nBrighton Print`,
   });
 }
 
@@ -83,7 +83,7 @@ export function emailAdminNewShop(shop) {
   if (!config.adminEmail) return Promise.resolve(false);
   return sendMail({
     to: config.adminEmail,
-    subject: `New PrintDesk ${shop.is_demo ? 'demo shop' : 'shop'} registered: ${shop.name}`,
+    subject: `New Brighton Print ${shop.is_demo ? 'demo shop' : 'shop'} registered: ${shop.name}`,
     text: `${shop.name} (${shop.city})\nOwner: ${shop.owner_name}\nMobile: ${shop.mobile}\nEmail: ${shop.email}\nLink: ${orderFormUrl(shop)}\n\nOpen: ${config.adminUrl}/shops/${shop.id}`,
   });
 }
@@ -91,7 +91,7 @@ export function emailAdminNewShop(shop) {
 export function emailShopApproved(shop) {
   return sendMail({
     to: shop.email,
-    subject: 'Your PrintDesk account is active',
-    text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk account is approved. Log in: ${config.baseUrl}/login\nYour customer order link: ${orderFormUrl(shop)}\n\nBrighton Solution`,
+    subject: 'Your Brighton Print account is active',
+    text: `Hi ${shop.owner_name || shop.name},\n\nYour Brighton Print account is approved. Log in: ${config.baseUrl}/login\nYour customer order link: ${orderFormUrl(shop)}\n\nBrighton Solution`,
   });
 }

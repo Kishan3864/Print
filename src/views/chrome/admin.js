@@ -23,7 +23,7 @@ export function adminHeader(res, active) {
   const unread = res.locals.adminUnread || 0;
   return html`<header class="app-header app-header-admin">
     <div class="container header-row">
-      <a class="brand" href="/admin" aria-label="PrintDesk admin overview">${logoMark(30)}<span class="brand-name">Print<b>Desk</b></span><span class="admin-tag">Admin</span></a>
+      <a class="brand" href="/admin" aria-label="Brighton Print admin overview">${logoMark(30)}<span class="brand-name">Brighton <b>Print</b></span><span class="admin-tag">Admin</span></a>
       ${loggedIn
         ? html`<nav class="app-nav adm-nav" aria-label="Admin">
             ${ADMIN_NAV.map((n) => html`<a href="${n.href}" class="nav-item${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${navIcon(n)}<span>${n.label}</span>${ticketBadge(res, n)}</a>`)}

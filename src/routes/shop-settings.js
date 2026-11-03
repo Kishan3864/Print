@@ -72,7 +72,7 @@ router.get('/poster', (req, res) => {
 function currentValues(shop) {
   return {
     name: shop.name,
-    brand_color: isHexColor(shop.brand_color) ? shop.brand_color.toLowerCase() : '#0077b6',
+    brand_color: isHexColor(shop.brand_color) ? shop.brand_color.toLowerCase() : '#4f46e5',
     phone: shop.phone || '',
     address: shop.address || '',
     size_options: sizeOptions(shop).join('\n'),
@@ -114,7 +114,7 @@ function readProfile(body) {
   else if (values.name.length > 80) errors.name = 'Keep the shop name to 80 characters or fewer.';
 
   if (values.brand_color && !values.brand_color.startsWith('#')) values.brand_color = '#' + values.brand_color;
-  if (!isHexColor(values.brand_color)) errors.brand_color = 'Pick a colour, or type it as # and 6 characters, like #0077b6.';
+  if (!isHexColor(values.brand_color)) errors.brand_color = 'Pick a colour, or type it as # and 6 characters, like #4f46e5.';
 
   const phoneDigits = digits(values.phone).length;
   if (values.phone && (!/^\+?[\d\s\-()]+$/.test(values.phone) || phoneDigits < 8 || phoneDigits > 15)) {

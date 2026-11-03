@@ -1,4 +1,4 @@
-/* PrintDesk core client script – loaded on every page (no inline scripts, CSP-safe). */
+/* Brighton Print core client script – loaded on every page (no inline scripts, CSP-safe). */
 (function () {
   'use strict';
 

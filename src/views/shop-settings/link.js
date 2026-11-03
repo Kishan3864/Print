@@ -114,7 +114,7 @@ export function linkView(res, { shop, state }) {
     <div class="set-install-head">
       <span class="set-install-icon">${icon('install')}</span>
       <div>
-        <h2 id="set-install-title">Install PrintDesk on your phone</h2>
+        <h2 id="set-install-title">Install Brighton Print on your phone</h2>
         <p class="muted">Open your orders in one tap from the home screen, like an app – and hear new-order alerts.</p>
       </div>
     </div>

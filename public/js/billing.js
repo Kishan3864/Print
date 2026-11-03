@@ -1,4 +1,4 @@
-/* PrintDesk billing: print receipt, forward to Razorpay, admin manual-payment amount hint. */
+/* Brighton Print billing: print receipt, forward to Razorpay, admin manual-payment amount hint. */
 (function () {
   'use strict';
 

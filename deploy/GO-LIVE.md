@@ -1,4 +1,4 @@
-# PrintDesk – go live (safe, step by step)
+# Brighton Print – go live (safe, step by step)
 
 Every step only **adds** things (a new folder, a new pm2 app, a new nginx site file).
 Existing sites, apps and data on the server are not changed. Rollback is at the end.
@@ -34,7 +34,7 @@ Pick ONE line, based on `node -v` from step 1:
 ```bash
 # a) node is v22 or newer → nothing to do.
 
-# b) node is older (other apps use it) → Node 22 only for PrintDesk, via nvm (no system change):
+# b) node is older (other apps use it) → Node 22 only for Brighton Print, via nvm (no system change):
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && . ~/.nvm/nvm.sh && nvm install 22 && nvm alias default system 2>/dev/null; true
 
 # c) node is not installed at all:
@@ -117,7 +117,7 @@ cd /var/www/printdesk && git pull && npm ci --omit=dev && pm2 reload printdesk
 2. `pm2 reload printdesk`. PayU sends customers back to `https://print.brightonsolution.com/pay/payu/return` automatically.
 3. Until then, record UPI payments in Admin → shop → "Record payment".
 
-## Rollback (removes only PrintDesk)
+## Rollback (removes only Brighton Print)
 
 ```bash
 pm2 delete printdesk && pm2 save

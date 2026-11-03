@@ -28,7 +28,7 @@ export function demoBanner(shop) {
 /**
  * Renders a full HTML page.
  * @param res      Express response (uses res.locals: csrf, shop, isAdmin, isDemo, flash)
- * @param opts.title        page title (suffix " · PrintDesk" added)
+ * @param opts.title        page title (suffix " · Brighton Print" added)
  * @param opts.body         html`` main content
  * @param opts.variant      'public' | 'auth' | 'shop' | 'admin' | 'customer' | 'bare'
  * @param opts.active       active nav key ('orders'|'link'|'settings' for shop; 'demo' etc. for public)
@@ -40,13 +40,13 @@ export function demoBanner(shop) {
  * @param opts.wide         use wide container for main (shop/admin)
  */
 export function page(res, opts) {
-  const { title = 'PrintDesk', body = '', variant = 'public', active = '', brandShop = null, scripts = [], description, bodyClass = '', noindex = false } = opts;
+  const { title = 'Brighton Print', body = '', variant = 'public', active = '', brandShop = null, scripts = [], description, bodyClass = '', noindex = false } = opts;
   const locals = res.locals;
   const demoShop = brandShop?.is_demo ? brandShop : locals.shop?.is_demo ? locals.shop : null;
   // The shop area of a personal demo shop shows its own banner (days left / go live) instead.
   const isDemo = Boolean(locals.isDemo || brandShop?.is_demo) && !(variant === 'shop' && demoShop && demoShop.slug !== config.demo.slug);
-  const desc = description || 'PrintDesk – one link, one order number, one final file. Online order intake for print shops.';
-  const fullTitle = title === 'PrintDesk' ? 'PrintDesk – order intake for print shops' : `${title} · PrintDesk`;
+  const desc = description || 'Brighton Print – one link, one order number, one final file. Online order intake for print shops.';
+  const fullTitle = title === 'Brighton Print' ? 'Brighton Print – order intake for print shops' : `${title} · Brighton Print`;
   const robots = noindex || variant === 'shop' || variant === 'admin' || variant === 'customer' || variant === 'auth';
 
   let header = '';
@@ -85,7 +85,7 @@ ${variant === 'customer'
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="PrintDesk">`)}
+<meta name="apple-mobile-web-app-title" content="Brighton Print">`)}
 <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">

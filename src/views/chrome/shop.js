@@ -57,9 +57,9 @@ export function shopHeader(res, active) {
   const unread = res.locals.shopUnread || 0;
   return html`<header class="app-header sh-header">
     <div class="container header-row">
-      <a class="sh-brand" href="/shop" aria-label="${shop?.name || 'PrintDesk'} – orders">
+      <a class="sh-brand" href="/shop" aria-label="${shop?.name || 'Brighton Print'} – orders">
         ${shopAvatar(shop)}
-        <span class="sh-brand-text"><b>${shop?.name || 'PrintDesk'}</b><small>PrintDesk</small></span>
+        <span class="sh-brand-text"><b>${shop?.name || 'Brighton Print'}</b><small>Brighton Print</small></span>
       </a>
       <nav class="app-nav sh-nav" aria-label="Shop">
         ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="nav-item${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.label}</span>${badgeFor(res, n.key)}</a>`)}

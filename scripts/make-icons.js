@@ -1,4 +1,4 @@
-// Generates the PWA / favicon icons in public/icons/ from the PrintDesk mark
+// Generates the PWA / favicon icons in public/icons/ from the Brighton Print mark
 // (same geometry as logoMark() in src/views/components.js, viewBox 64).
 // Pure Node: supersampled rasteriser + the zlib/CRC32 PNG writer in src/lib/png.js.
 //   node scripts/make-icons.js
@@ -9,13 +9,16 @@ import { encodePng, hexRgb } from '../src/lib/png.js';
 
 const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons');
 
-const INK = '#0b1220';
+const INK = '#4f46e5';
 const TILE = { x: 0, y: 0, w: 64, h: 64, r: 16, color: INK };
 const STRIPES = [
-  { x: 14, y: 14, w: 8, h: 36, r: 4, color: '#00aeef' },
-  { x: 25, y: 14, w: 8, h: 36, r: 4, color: '#ec008c' },
-  { x: 36, y: 14, w: 8, h: 36, r: 4, color: '#ffd200' },
-  { x: 47, y: 14, w: 4, h: 36, r: 2, color: '#ffffff', opacity: 0.9 },
+  { x: 20, y: 10, w: 24, h: 14, r: 2, color: '#ffffff' },
+  { x: 11, y: 21, w: 42, h: 21, r: 6, color: '#ffffff' },
+  { x: 18, y: 33, w: 28, h: 4, r: 2, color: '#312e81' },
+  { x: 43, y: 26, w: 4, h: 4, r: 2, color: '#f97316' },
+  { x: 20, y: 35, w: 24, h: 19, r: 2, color: '#ffffff' },
+  { x: 24, y: 41, w: 16, h: 2.5, r: 1.2, color: '#c7d2fe' },
+  { x: 24, y: 46, w: 10, h: 2.5, r: 1.2, color: '#c7d2fe' },
 ];
 
 const inRoundRect = (u, v, s) => {
@@ -83,7 +86,7 @@ function render(size, shapes, { background = null, samples = 6 } = {}) {
 }
 
 const svg =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0b1220"/><rect x="14" y="14" width="8" height="36" rx="4" fill="#00aeef"/><rect x="25" y="14" width="8" height="36" rx="4" fill="#ec008c"/><rect x="36" y="14" width="8" height="36" rx="4" fill="#ffd200"/><rect x="47" y="14" width="4" height="36" rx="2" fill="#ffffff" opacity=".9"/></svg>\n';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#4f46e5"/><rect x="20" y="10" width="24" height="14" rx="2" fill="#ffffff"/><rect x="11" y="21" width="42" height="21" rx="6" fill="#ffffff"/><rect x="18" y="33" width="28" height="4" rx="2" fill="#312e81"/><rect x="43" y="26" width="4" height="4" rx="2" fill="#f97316"/><rect x="20" y="35" width="24" height="19" rx="2" fill="#ffffff"/><rect x="24" y="41" width="16" height="2.5" rx="1.2" fill="#c7d2fe"/><rect x="24" y="46" width="10" height="2.5" rx="1.2" fill="#c7d2fe"/></svg>\n';
 
 const ICONS = [
   // Rounded tile, transparent corners ("any" purpose).

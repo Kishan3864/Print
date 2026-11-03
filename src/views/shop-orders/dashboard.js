@@ -273,7 +273,7 @@ export function dashboardView(d) {
         <h1>${greeting()}${firstName ? `, ${firstName}` : ''}</h1>
         <p class="sh-hello-sub">${subParts.length
           ? subParts.map((p, i) => html`${i ? html`<span class="sh-dot" aria-hidden="true">·</span>` : ''}<span>${p}</span>`)
-          : html`Welcome to PrintDesk. Share your link to get your first order.`}</p>
+          : html`Welcome to Brighton Print. Share your link to get your first order.`}</p>
       </div>
       <div class="sh-linkchip">
         <span class="sh-linkchip-icon">${icon('link')}</span>

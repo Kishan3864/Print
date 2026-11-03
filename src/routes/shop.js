@@ -57,7 +57,7 @@ function renderDemoEnded(req, res) {
         <div class="waiting-mark">${logoMark(56)}</div>
         <span class="pill pill-shop-expired">Demo ended</span>
         <h1>Your demo time is over</h1>
-        <p class="lead">Thanks for trying PrintDesk. Register your own shop to start taking real orders – it takes 2 minutes.</p>
+        <p class="lead">Thanks for trying Brighton Print. Register your own shop to start taking real orders – it takes 2 minutes.</p>
         <div class="waiting-actions">
           <a class="btn btn-primary btn-lg" href="/register">Register your shop</a>
           <a class="btn btn-secondary" href="https://ig.me/m/${config.instagram}" target="_blank" rel="noopener">Message us</a>
