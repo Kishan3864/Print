@@ -48,10 +48,24 @@ export const config = {
     pass: env.SMTP_PASS || '',
     from: env.SMTP_FROM || 'PrintDesk <no-reply@brightonsolution.com>',
   },
+  // Admin panel lives on its own host in production (e.g. admin.print.brightonsolution.com).
+  // Empty = served at /admin on the main host (local development).
+  adminHost: (env.ADMIN_HOST || '').trim().toLowerCase(),
+  razorpay: {
+    keyId: env.RAZORPAY_KEY_ID || '',
+    keySecret: env.RAZORPAY_KEY_SECRET || '',
+    webhookSecret: env.RAZORPAY_WEBHOOK_SECRET || '',
+  },
   demo: {
     slug: 'demo-print-studio',
     resetHours: 6,
+    // Personal demo shops (created from /demo) run this many days, then must go live.
+    trialDays: int(env.DEMO_DAYS, 7),
+    // Ended demo shops are deleted this many days after the demo ended.
+    keepDays: 14,
   },
+  // Days before expiry when renewal reminders are sent.
+  reminderDays: [7, 3, 1],
   limits: {
     orderFiles: 5,
     orderFileBytes: 100 * 1024 * 1024,
@@ -66,6 +80,9 @@ export const config = {
   companyUrl: 'https://brightonsolution.com',
 };
 config.smtp.enabled = Boolean(config.smtp.host);
+config.razorpay.enabled = Boolean(config.razorpay.keyId && config.razorpay.keySecret);
+// Public address of the admin panel (for emails / links).
+config.adminUrl = config.adminHost ? `${config.baseUrl.startsWith('https') ? 'https' : 'http'}://${config.adminHost}/admin` : `${config.baseUrl}/admin`;
 
 export const paths = {
   root: ROOT,

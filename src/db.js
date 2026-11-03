@@ -91,6 +91,81 @@ CREATE TABLE IF NOT EXISTS meta (
 );
 `);
 
+// Additive migrations, tracked with PRAGMA user_version. Never edit a shipped
+// entry – append a new one.
+const MIGRATIONS = [
+  // 1: subscriptions, payments, support tickets, notifications
+  `ALTER TABLE shops ADD COLUMN billing_cycle TEXT;
+   ALTER TABLE shops ADD COLUMN went_live_at TEXT;
+
+   CREATE TABLE IF NOT EXISTS payments (
+     id                  INTEGER PRIMARY KEY,
+     shop_id             INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     plan                TEXT NOT NULL,
+     cycle               TEXT NOT NULL CHECK (cycle IN ('monthly','yearly')),
+     amount_paise        INTEGER NOT NULL,
+     currency            TEXT NOT NULL DEFAULT 'INR',
+     method              TEXT NOT NULL CHECK (method IN ('razorpay','manual')),
+     status              TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created','paid','failed','cancelled')),
+     reference           TEXT NOT NULL UNIQUE,
+     provider_link_id    TEXT,
+     provider_link_url   TEXT,
+     provider_payment_id TEXT,
+     note                TEXT NOT NULL DEFAULT '',
+     period_start        TEXT,
+     period_end          TEXT,
+     created_at          TEXT NOT NULL,
+     paid_at             TEXT
+   );
+   CREATE INDEX IF NOT EXISTS idx_payments_shop ON payments(shop_id, created_at);
+   CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, paid_at);
+
+   CREATE TABLE IF NOT EXISTS tickets (
+     id            INTEGER PRIMARY KEY,
+     shop_id       INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     subject       TEXT NOT NULL,
+     category      TEXT NOT NULL DEFAULT 'general',
+     status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','answered','closed')),
+     last_author   TEXT NOT NULL DEFAULT 'shop' CHECK (last_author IN ('shop','admin')),
+     shop_unread   INTEGER NOT NULL DEFAULT 0,
+     admin_unread  INTEGER NOT NULL DEFAULT 1,
+     created_at    TEXT NOT NULL,
+     updated_at    TEXT NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_tickets_shop ON tickets(shop_id, updated_at);
+   CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status, updated_at);
+
+   CREATE TABLE IF NOT EXISTS ticket_messages (
+     id         INTEGER PRIMARY KEY,
+     ticket_id  INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+     author     TEXT NOT NULL CHECK (author IN ('shop','admin')),
+     body       TEXT NOT NULL,
+     created_at TEXT NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_ticket_messages ON ticket_messages(ticket_id);
+
+   CREATE TABLE IF NOT EXISTS notifications (
+     id          INTEGER PRIMARY KEY,
+     audience    TEXT NOT NULL CHECK (audience IN ('shop','admin')),
+     shop_id     INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+     kind        TEXT NOT NULL DEFAULT 'info',
+     title       TEXT NOT NULL,
+     body        TEXT NOT NULL DEFAULT '',
+     link        TEXT NOT NULL DEFAULT '',
+     dedupe_key  TEXT UNIQUE,
+     created_at  TEXT NOT NULL,
+     read_at     TEXT
+   );
+   CREATE INDEX IF NOT EXISTS idx_notifications_shop ON notifications(audience, shop_id, read_at);`,
+];
+
+for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {
+  db.transaction(() => {
+    db.exec(MIGRATIONS[v]);
+    db.pragma(`user_version = ${v + 1}`);
+  })();
+}
+
 export const now = () => new Date().toISOString();
 
 export const meta = {

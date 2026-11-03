@@ -94,7 +94,7 @@ export function timelineSteps(status, { hadProof = true } = {}) {
 
 // Shop account states.
 export const SHOP_STATE_LABEL = {
-  pending: 'Pending',
+  pending: 'Awaiting payment',
   active: 'Active',
   paused: 'Paused',
   expired: 'Expired',

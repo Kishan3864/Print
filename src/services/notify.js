@@ -3,8 +3,10 @@ import { config } from '../config.js';
 import { waLink } from '../lib/util.js';
 
 // ---------- links ----------
-export const orderFormUrl = (shop) => `${config.baseUrl}/${shop.slug}`;
-export const trackPath = (shop, order) => `/${shop.slug}/o/${order.token}`;
+/** Customer-facing path of a shop: /<slug> for live shops, /demo/<slug> for demo shops. */
+export const shopPath = (shop) => `${shop.is_demo ? '/demo' : ''}/${shop.slug}`;
+export const orderFormUrl = (shop) => config.baseUrl + shopPath(shop);
+export const trackPath = (shop, order) => `${shopPath(shop)}/o/${order.token}`;
 export const trackUrl = (shop, order) => config.baseUrl + trackPath(shop, order);
 
 // ---------- WhatsApp (wa.me with a pre-written message) ----------
@@ -81,8 +83,8 @@ export function emailAdminNewShop(shop) {
   if (!config.adminEmail) return Promise.resolve(false);
   return sendMail({
     to: config.adminEmail,
-    subject: `New PrintDesk shop waiting for approval: ${shop.name}`,
-    text: `${shop.name} (${shop.city})\nOwner: ${shop.owner_name}\nMobile: ${shop.mobile}\nEmail: ${shop.email}\nLink: ${config.baseUrl}/${shop.slug}\n\nApprove: ${config.baseUrl}/admin/shops/${shop.id}`,
+    subject: `New PrintDesk ${shop.is_demo ? 'demo shop' : 'shop'} registered: ${shop.name}`,
+    text: `${shop.name} (${shop.city})\nOwner: ${shop.owner_name}\nMobile: ${shop.mobile}\nEmail: ${shop.email}\nLink: ${orderFormUrl(shop)}\n\nOpen: ${config.adminUrl}/shops/${shop.id}`,
   });
 }
 
@@ -90,6 +92,6 @@ export function emailShopApproved(shop) {
   return sendMail({
     to: shop.email,
     subject: 'Your PrintDesk account is active',
-    text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk account is approved. Log in: ${config.baseUrl}/login\nYour customer order link: ${config.baseUrl}/${shop.slug}\n\nBrighton Solution`,
+    text: `Hi ${shop.owner_name || shop.name},\n\nYour PrintDesk account is approved. Log in: ${config.baseUrl}/login\nYour customer order link: ${orderFormUrl(shop)}\n\nBrighton Solution`,
   });
 }

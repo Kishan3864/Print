@@ -3,7 +3,8 @@ import path from 'node:path';
 import { db, meta } from './db.js';
 import { config, paths } from './config.js';
 import { purgeExpiredFiles } from './services/orders.js';
-import { ensureDemoShop, resetDemo } from './services/demo.js';
+import * as demo from './services/demo.js';
+import { runReminders } from './services/billing.js';
 
 const HOUR = 60 * 60 * 1000;
 const STORED_RE = /^[a-f0-9]{32}\.[a-z0-9]{1,5}$/;
@@ -49,7 +50,7 @@ function maybeResetDemo(force = false) {
   try {
     const last = Date.parse(meta.get('demo_last_reset') || '') || 0;
     if (force || Date.now() - last >= config.demo.resetHours * HOUR) {
-      resetDemo();
+      demo.resetDemo();
       meta.set('demo_last_reset', new Date().toISOString());
       console.log('[demo] demo shop reset with sample data');
     }
@@ -58,12 +59,25 @@ function maybeResetDemo(force = false) {
   }
 }
 
+/** Renewal reminders, expiry notices and ended-demo cleanup (all idempotent). */
+function runBilling() {
+  try {
+    runReminders();
+    if (typeof demo.cleanupEndedDemos === 'function') demo.cleanupEndedDemos();
+  } catch (err) {
+    console.error('[billing] daily job failed:', err);
+  }
+}
+
 export function startJobs() {
-  const created = ensureDemoShop();
+  const created = demo.ensureDemoShop();
   maybeResetDemo(Boolean(created));
   // Retention: once at start (after a short delay) and then daily.
   setTimeout(runRetention, 10 * 1000).unref();
   setInterval(runRetention, 24 * HOUR).unref();
+  // Billing reminders: shortly after start, then every 6 hours (dedupe keys prevent repeats).
+  setTimeout(runBilling, 15 * 1000).unref();
+  setInterval(runBilling, 6 * HOUR).unref();
   // Demo reset check every 10 minutes (resets every config.demo.resetHours).
   setInterval(() => maybeResetDemo(), 10 * 60 * 1000).unref();
 }

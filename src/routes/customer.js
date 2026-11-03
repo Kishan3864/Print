@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { html } from '../lib/html.js';
-import { config } from '../config.js';
+import { storageCapBytes } from '../services/billing.js';
 import { SLUG_ROUTE, clampInt, clean, cleanLine, flash, isEmail, isMobile, maskPhone } from '../lib/util.js';
 import { actionLimiter, orderLimiter } from '../lib/security.js';
 import { discardUploads, orderFilesUpload, sendStoredFile } from '../lib/uploads.js';
@@ -26,10 +26,19 @@ const SHOP = `/:slug(${SLUG_ROUTE})`;
 const ORDER = `${SHOP}/o/:token([A-Za-z0-9_-]{20,64})`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Loads the shop from the slug; unknown, pending or rejected shops fall through to the 404 page. */
+/**
+ * Loads the shop from the slug; unknown, unpaid or rejected shops fall through to the 404 page.
+ * This router is mounted twice: at /demo for demo shops and at / for live shops.
+ */
 function loadShop(req, res, next) {
   const shop = getShopBySlug(req.params.slug);
+  const demoPath = req.baseUrl === '/demo';
   if (!shop || shop.status === 'pending' || shop.status === 'rejected') return next('route');
+  if (Boolean(shop.is_demo) !== demoPath) {
+    // A demo shop that went live (or a live link opened under /demo): send to the right address.
+    if (req.method === 'GET') return res.redirect(302, (shop.is_demo ? '/demo' : '') + req.originalUrl.slice(req.baseUrl.length));
+    return next('route');
+  }
   req.custShop = shop;
   req.isOwner = Boolean(req.shop && req.shop.id === shop.id);
   next();
@@ -112,10 +121,10 @@ function requireOpen(req, res, next) {
   next();
 }
 
-/** Storage caps: the demo shop is small and shared; real shops only when SHOP_QUOTA_GB is set. */
+/** Storage caps: small for demo shops, the plan's storage for live shops. */
 function checkQuota(req, res, next) {
   const shop = req.custShop;
-  const cap = shop.is_demo ? config.limits.demoStorageBytes : config.limits.shopQuotaBytes;
+  const cap = storageCapBytes(shop);
   if (cap && storageUsed(shop.id) + (Number(req.get('content-length')) || 0) > cap) {
     req.uploadRefused = shop.is_demo
       ? 'The demo is full right now – it resets every few hours.'

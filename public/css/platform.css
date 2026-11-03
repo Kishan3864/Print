@@ -1,0 +1,9 @@
+/* ---------- platform ---------- */
+/* ---------- platform: offline page ---------- */
+.offline-icon { background: var(--warn-soft); color: var(--warn); }
+.offline-page .message-card .muted { max-width: 44ch; margin-left: auto; margin-right: auto; }
+.offline-home { margin: 14px 0 0; font-size: .92rem; }
+
+/* ---------- fallbacks: engines without color-mix() (iOS < 16.2, Chrome < 111, Firefox ESR 102) ---------- */
+/* A color-mix() value containing var() is only rejected at computed-value time, which leaves the background
+   transparent (an earlier fallback declaration does not help). These solid stand-ins come last so they win. */

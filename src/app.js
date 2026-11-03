@@ -5,7 +5,9 @@ import helmet from 'helmet';
 import cookieSession from 'cookie-session';
 import { config, paths, ROOT } from './config.js';
 import { html } from './lib/html.js';
-import { csrfProtect, loadSession } from './lib/security.js';
+import { csrfProtect, loadSession, requireAdmin } from './lib/security.js';
+import { cssBundle } from './lib/assets.js';
+import { handleRazorpayWebhook } from './services/billing.js';
 import { isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
 import { getShopBySlug, logoPath } from './services/shops.js';
 import { messagePage } from './views/layout.js';
@@ -13,6 +15,8 @@ import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
 import shopRoutes from './routes/shop.js';
 import customerRoutes from './routes/customer.js';
+import adminBillingRoutes from './routes/admin-billing.js';
+import adminSupportRoutes from './routes/admin-support.js';
 
 export function createApp() {
   const app = express();
@@ -62,6 +66,11 @@ export function createApp() {
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.type('application/manifest+json').sendFile(path.join(paths.public, 'manifest.webmanifest'));
   });
+  // One stylesheet, built in memory from public/css/*.css (src/lib/assets.js).
+  app.get('/css/app.css', (req, res) => {
+    res.setHeader('Cache-Control', config.isProd ? 'public, max-age=604800' : 'no-cache');
+    res.type('text/css').send(cssBundle());
+  });
   app.use('/fonts/jakarta', express.static(path.join(ROOT, 'node_modules/@fontsource/plus-jakarta-sans/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
   app.use('/fonts/mono', express.static(path.join(ROOT, 'node_modules/@fontsource/jetbrains-mono/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
   app.use(
@@ -94,6 +103,31 @@ export function createApp() {
 
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
+  // Razorpay webhook: raw body for the signature, no session/CSRF.
+  app.post('/webhooks/razorpay', express.raw({ type: '*/*', limit: '100kb' }), (req, res) => {
+    try {
+      handleRazorpayWebhook(req.body, req.get('x-razorpay-signature'));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error('[razorpay webhook]', err.message);
+      res.status(err.status || 500).json({ ok: false });
+    }
+  });
+
+  // Admin panel on its own host (ADMIN_HOST): admin.example.com/x is served as /admin/x,
+  // and /admin on the main host redirects there.
+  if (config.adminHost) {
+    app.use((req, res, next) => {
+      const isAdminPath = req.path === '/admin' || req.path.startsWith('/admin/');
+      if (req.hostname === config.adminHost) {
+        if (!isAdminPath) req.url = '/admin' + (req.url === '/' ? '' : req.url);
+        return next();
+      }
+      if (isAdminPath) return res.redirect(302, config.adminUrl.slice(0, -'/admin'.length) + req.originalUrl);
+      next();
+    });
+  }
+
   // ---------- dynamic pages ----------
   app.use(express.urlencoded({ extended: false, limit: '200kb', parameterLimit: 200 }));
   app.use(
@@ -116,7 +150,11 @@ export function createApp() {
 
   app.use('/', publicRoutes);
   app.use('/admin', adminRoutes);
+  app.use('/admin', requireAdmin, adminBillingRoutes);
+  app.use('/admin', requireAdmin, adminSupportRoutes);
   app.use('/shop', shopRoutes);
+  // Customer pages: live shops at /<slug>, demo shops at /demo/<slug>.
+  app.use('/demo', customerRoutes);
   app.use('/', customerRoutes);
 
   // ---------- 404 + errors ----------

@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { db, now } from '../db.js';
-import { paths } from '../config.js';
-import { ymd, startOfTodayIso, randomToken } from '../lib/util.js';
+import { config, paths } from '../config.js';
+import { addDays, ymd, startOfTodayIso, randomToken } from '../lib/util.js';
 
 export const DEFAULT_SIZES = ['A4', 'A3', 'A5', 'Letter', 'Visiting card', 'Photo 4x6', 'Flex / Banner', 'Other'];
 
@@ -18,13 +18,14 @@ export const emailTaken = (email) => Boolean(db.prepare('SELECT 1 FROM shops WHE
 
 /**
  * Effective state of a shop account:
- *   pending | rejected | paused | expired | active
- * Only 'active' shops accept new customer orders.
+ *   pending (registered, not paid yet) | rejected | paused | expired | active
+ * Only 'active' shops accept new customer orders. The shared sample demo shop
+ * never expires; personal demo shops expire when their demo days end.
  */
 export function shopState(shop) {
   if (!shop) return 'pending';
   if (shop.status !== 'active') return shop.status;
-  if (shop.is_demo) return 'active';
+  if (shop.is_demo && shop.slug === config.demo.slug) return 'active';
   if (!shop.paid_until || shop.paid_until < ymd()) return 'expired';
   return 'active';
 }
@@ -40,13 +41,20 @@ export function sizeOptions(shop) {
   return DEFAULT_SIZES;
 }
 
-export function createShop({ slug, name, owner_name, mobile, email, city, password }) {
+/**
+ * Registers a shop. Real shops start 'pending' (they become active when they pay);
+ * demo shops (demo: true) are active at once for config.demo.trialDays days.
+ */
+export function createShop({ slug, name, owner_name, mobile, email, city, password, demo = false }) {
   const info = db
     .prepare(
-      `INSERT INTO shops (slug, name, owner_name, mobile, email, city, password_hash, size_options, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO shops (slug, name, owner_name, mobile, email, city, password_hash, size_options, created_at, is_demo, status, paid_until)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(slug, name, owner_name, mobile, email.toLowerCase(), city, hashPassword(password), JSON.stringify(DEFAULT_SIZES), now());
+    .run(
+      slug, name, owner_name, mobile, email.toLowerCase(), city, hashPassword(password), JSON.stringify(DEFAULT_SIZES), now(),
+      demo ? 1 : 0, demo ? 'active' : 'pending', demo ? addDays(ymd(), config.demo.trialDays - 1) : null
+    );
   return getShopById(info.lastInsertRowid);
 }
 

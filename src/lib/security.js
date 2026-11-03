@@ -4,6 +4,8 @@ import { config } from '../config.js';
 import { meta } from '../db.js';
 import { flash, randomToken, safeEqual } from './util.js';
 import { getShopById } from '../services/shops.js';
+import { unreadAdminCount, unreadShopCount } from '../services/notifications.js';
+import { adminOpenTickets, shopUnreadTickets } from '../services/support.js';
 
 // ---------- CSRF (synchroniser token kept in the signed cookie session) ----------
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -72,6 +74,15 @@ export function loadSession(req, res, next) {
       delete s.pv;
       delete s.demo;
     }
+  }
+  // Badge counts for the app chrome.
+  if (res.locals.isAdmin) {
+    res.locals.adminUnread = unreadAdminCount();
+    res.locals.openTickets = adminOpenTickets();
+  }
+  if (req.shop) {
+    res.locals.shopUnread = unreadShopCount(req.shop.id);
+    res.locals.ticketsUnread = shopUnreadTickets(req.shop.id);
   }
   // Flash messages are read once.
   res.locals.flash = Array.isArray(s.flash) ? s.flash : [];

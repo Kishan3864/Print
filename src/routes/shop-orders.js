@@ -4,7 +4,7 @@ import { clean, cleanLine, clampInt, flash } from '../lib/util.js';
 import { STATUSES, STATUS_LABEL, TABS } from '../lib/status.js';
 import { actionLimiter } from '../lib/security.js';
 import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/uploads.js';
-import { config } from '../config.js';
+import { storageCapBytes } from '../services/billing.js';
 import { shopCounts, storageUsed } from '../services/shops.js';
 import {
   getOrderByNo,
@@ -149,7 +149,7 @@ router.post(
   loadOrder,
   (req, res, next) => {
     const shop = req.shop;
-    const cap = shop.is_demo ? config.limits.demoStorageBytes : config.limits.shopQuotaBytes;
+    const cap = storageCapBytes(shop);
     if (cap && storageUsed(shop.id) + (Number(req.get('content-length')) || 0) > cap) {
       req.uploadRefused = shop.is_demo ? 'The demo storage is full – it resets every few hours.' : 'Your storage is full. Please contact Brighton Solution.';
     }
