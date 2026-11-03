@@ -48,7 +48,7 @@ export const config = {
     pass: env.SMTP_PASS || '',
     from: env.SMTP_FROM || 'PrintDesk <no-reply@brightonsolution.com>',
   },
-  // Admin panel lives on its own host in production (e.g. admin.print.brightonsolution.com).
+  // Admin panel lives on its own host in production (e.g. adminprint.brightonsolution.com).
   // Empty = served at /admin on the main host (local development).
   adminHost: (env.ADMIN_HOST || '').trim().toLowerCase(),
   razorpay: {

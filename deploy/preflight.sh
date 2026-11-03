@@ -34,7 +34,7 @@ if sudo ss -ltn 2>/dev/null | grep -qE ':3100\s'; then echo "WARNING: 3100 is bu
 
 line "DNS (should show this server's IP)"
 echo "this server: $(curl -s -4 --max-time 5 ifconfig.me || hostname -I | awk '{print $1}')"
-for h in print.brightonsolution.com admin.print.brightonsolution.com; do
+for h in print.brightonsolution.com adminprint.brightonsolution.com; do
   printf '%-36s -> %s\n' "$h" "$(getent hosts "$h" | awk '{print $1}' | head -1)"
 done
 

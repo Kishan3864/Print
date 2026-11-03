@@ -10,7 +10,7 @@ DNS at your domain provider – two **A records**, both to `187.127.141.107`:
 | Name | Value |
 |---|---|
 | `print` | 187.127.141.107 |
-| `admin.print` | 187.127.141.107 |
+| `adminprint` | 187.127.141.107 |
 
 Push the code (PowerShell in `D:\Print`):
 
@@ -96,14 +96,14 @@ If `nginx -t` shows an error, nothing was reloaded – undo with
 
 ```bash
 sudo apt-get install -y certbot python3-certbot-nginx     # skip if certbot exists
-sudo certbot --nginx -d print.brightonsolution.com -d admin.print.brightonsolution.com
+sudo certbot --nginx -d print.brightonsolution.com -d adminprint.brightonsolution.com
 ```
 
 ## 8. Check
 
 - https://print.brightonsolution.com – landing + pricing
 - https://print.brightonsolution.com/demo – the link for Instagram leads
-- https://admin.print.brightonsolution.com – your admin login
+- https://adminprint.brightonsolution.com – your admin login
 
 ## Update later
 
