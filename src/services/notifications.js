@@ -10,6 +10,7 @@ function insert({ audience, shopId = null, kind = 'info', title, body = '', link
        VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(dedupe_key) DO NOTHING`
     )
     .run(audience, shopId, kind, String(title).slice(0, 160), String(body).slice(0, 2000), String(link).slice(0, 300), dedupe, now());
+  if (info.changes) publish(audience === 'admin' ? 'admin' : `shop:${shopId}`);
   return info.changes > 0;
 }
 

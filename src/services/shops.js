@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { db, now } from '../db.js';
 import { config, paths } from '../config.js';
 import { addDays, ymd, startOfTodayIso, randomToken } from '../lib/util.js';
+import { publishShop } from '../lib/live.js';
 
 export const DEFAULT_SIZES = ['A4', 'A3', 'A5', 'Letter', 'Visiting card', 'Photo 4x6', 'Flex / Banner', 'Other'];
 
@@ -69,6 +70,7 @@ export function updateShopSettings(shopId, fields) {
   if (!keys.length) return;
   const sql = `UPDATE shops SET ${keys.map((k) => `${k} = @${k}`).join(', ')} WHERE id = @id`;
   db.prepare(sql).run({ ...Object.fromEntries(keys.map((k) => [k, fields[k]])), id: shopId });
+  publishShop(shopId);
 }
 
 /** Sets a new password and bumps pw_version so other sessions are logged out. */
@@ -84,12 +86,15 @@ export function approveShop(shopId, { plan, paid_until }) {
   db.prepare(
     `UPDATE shops SET status = 'active', plan = ?, paid_until = ?, approved_at = COALESCE(approved_at, ?) WHERE id = ?`
   ).run(plan, paid_until, now(), shopId);
+  publishShop(shopId);
 }
 export function setShopStatus(shopId, status) {
   db.prepare('UPDATE shops SET status = ? WHERE id = ?').run(status, shopId);
+  publishShop(shopId);
 }
 export function setAdminNote(shopId, note) {
   db.prepare('UPDATE shops SET admin_note = ? WHERE id = ?').run(note, shopId);
+  publishShop(shopId);
 }
 
 // ---------- logo files ----------

@@ -2,6 +2,7 @@ import { db, now } from '../db.js';
 import { config } from '../config.js';
 import { notifyAdmin, notifyShop } from './notifications.js';
 import { sendMail } from './notify.js';
+import { publishShop } from '../lib/live.js';
 
 // Help & support tickets between a shop and Brighton Solution (super admin).
 
@@ -32,6 +33,7 @@ export function createTicket(shop, { subject, category, message }) {
   if (config.adminEmail) {
     sendMail({ to: config.adminEmail, subject: `[PrintDesk support] ${shop.name}: ${subject}`, text: `${message}\n\nOpen: ${config.adminUrl}/tickets/${id}` });
   }
+  publishShop(shop.id);
   return getTicket(id);
 }
 
@@ -74,12 +76,14 @@ export function replyToTicket(ticket, author, body) {
     const shop = db.prepare('SELECT name FROM shops WHERE id = ?').get(ticket.shop_id);
     notifyAdmin({ kind: 'support', title: `New reply from ${shop?.name || 'a shop'}`, body: ticket.subject, link: `/admin/tickets/${ticket.id}` });
   }
+  publishShop(ticket.shop_id);
   return getTicket(ticket.id);
 }
 
 export function setTicketStatus(ticket, status) {
   if (!TICKET_STATUS_LABEL[status]) return ticket;
   db.prepare('UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?').run(status, now(), ticket.id);
+  publishShop(ticket.shop_id);
   return getTicket(ticket.id);
 }
 

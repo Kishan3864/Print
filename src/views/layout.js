@@ -97,6 +97,7 @@ ${variant === 'customer'
 <link rel="stylesheet" href="${asset('/css/app.css')}">
 ${brandShop ? html`<link rel="stylesheet" href="/brand/${brandShop.slug}.css?v=${String(brandShop.brand_color || '').slice(1)}">` : ''}
 <script src="${asset('/js/app.js')}" defer></script>
+<script src="${asset('/js/live.js')}" defer></script>
 ${scripts.map((s) => html`<script src="${asset(s)}" defer></script>`)}
 </head>
 <body class="v-${variant}${bodyClass ? ' ' + bodyClass : ''}${isDemo ? ' is-demo' : ''}" data-csrf="${locals.csrf || ''}">

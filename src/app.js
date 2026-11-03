@@ -8,6 +8,8 @@ import { html } from './lib/html.js';
 import { csrfProtect, loadSession, requireAdmin } from './lib/security.js';
 import { cssBundle } from './lib/assets.js';
 import { handleRazorpayWebhook } from './services/billing.js';
+import { publishShop, stream } from './lib/live.js';
+import { getOrderByToken } from './services/orders.js';
 import { isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
 import { getShopBySlug, logoPath } from './services/shops.js';
 import { messagePage } from './views/layout.js';
@@ -147,6 +149,31 @@ export function createApp() {
     next();
   });
   app.use(csrfProtect);
+
+  // Live updates: after any successful admin/shop action, refresh every open page of that shop.
+  app.use((req, res, next) => {
+    if (req.method === 'POST') {
+      res.on('finish', () => {
+        if (res.statusCode >= 400) return;
+        const m = /\/admin\/shops\/(\d+)/.exec(req.originalUrl);
+        if (m) publishShop(Number(m[1]));
+        else if (req.shop) publishShop(req.shop.id);
+      });
+    }
+    next();
+  });
+
+  // Server-Sent Events stream: admin, the logged-in shop, and/or one customer order (slug + token).
+  app.get('/live', (req, res) => {
+    const channels = [];
+    if (res.locals.isAdmin) channels.push('admin');
+    if (req.shop) channels.push(`shop:${req.shop.id}`);
+    const shop = req.query.s ? getShopBySlug(String(req.query.s)) : null;
+    const order = shop && req.query.t ? getOrderByToken(shop.id, String(req.query.t)) : null;
+    if (order) channels.push(`order:${order.id}`);
+    if (!channels.length) return res.status(204).end();
+    stream(req, res, channels);
+  });
 
   app.use('/', publicRoutes);
   app.use('/admin', adminRoutes);

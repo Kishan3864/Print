@@ -7,6 +7,7 @@ import { addDays, formatDate, randomHex, safeEqual, waNumber, ymd } from '../lib
 import { getShopById } from './shops.js';
 import { notifyAdmin, notifyShop } from './notifications.js';
 import { sendMail } from './notify.js';
+import { publishShop } from '../lib/live.js';
 
 // Subscriptions: a shop buys a plan for one month or one year. Paying extends
 // shops.paid_until from max(today, current paid_until). When paid_until passes
@@ -179,6 +180,7 @@ export function markPaid(paymentId, { providerPaymentId = null, amountPaise = nu
     sendMail({ to: config.adminEmail, subject: `PrintDesk payment ${amount} – ${shop.name}`, text: `${shop.name} paid ${amount} for ${plan?.name || payment.plan} (${CYCLES[payment.cycle]}). Active till ${formatDate(end)}.\n\n${config.adminUrl}/shops/${shop.id}` });
   }
   sendMail({ to: shop.email, subject: `PrintDesk receipt – ${amount}`, text: `Hi ${shop.owner_name || shop.name},\n\nWe received ${amount} for the ${plan?.name || payment.plan} plan (${CYCLES[payment.cycle]}). Your PrintDesk is active till ${formatDate(end)}.\n\nReceipt: ${config.baseUrl}/shop/billing/receipt/${payment.id}\n\nBrighton Solution` });
+  publishShop(shop.id);
   return getPayment(payment.id);
 }
 

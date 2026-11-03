@@ -3,6 +3,7 @@ import { randomToken } from '../lib/util.js';
 import { canTransition, PROOF_ALLOWED, STATUS_LABEL, TABS } from '../lib/status.js';
 import { removeStoredFile } from '../lib/uploads.js';
 import { emailCustomer, emailShopNewOrder } from './notify.js';
+import { publishOrder } from '../lib/live.js';
 
 // Every query here is scoped by shop_id (tenant isolation) or by the
 // customer's unguessable token.
@@ -75,6 +76,7 @@ export const createOrder = (shop, data, files = [], { isSample = false, at } = {
     return getOrderById(shop.id, orderId);
   });
   const order = run();
+  publishOrder(order);
   if (!isSample) {
     emailShopNewOrder(shop, order);
     emailCustomer(shop, order, 'received');
@@ -96,6 +98,7 @@ export function setStatus(shop, order, to, { actor = 'shop', note = '', notify =
   })();
   const updated = getOrderById(shop.id, order.id);
   if (notify && to === 'ready') emailCustomer(shop, updated, 'ready');
+  publishOrder(updated);
   return updated;
 }
 
@@ -116,6 +119,7 @@ export function addProof(shop, order, file, note = '') {
   })();
   const updated = getOrderById(shop.id, order.id);
   emailCustomer(shop, updated, 'proof');
+  publishOrder(updated);
   return updated;
 }
 
@@ -132,7 +136,9 @@ export function customerDecision(shop, order, decision, note = '', proof = null)
     const about = proof ? `Proof: ${proof.original_name}` : '';
     addEvent(order.id, { actor: 'customer', type: 'status', from: order.status, to, note: [note, about].filter(Boolean).join('\n') });
   })();
-  return getOrderById(shop.id, order.id);
+  const decided = getOrderById(shop.id, order.id);
+  publishOrder(decided);
+  return decided;
 }
 
 /** Orders list for the dashboard. tab = TABS key, q = search text (name, mobile, order no). */
