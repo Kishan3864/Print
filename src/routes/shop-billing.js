@@ -87,6 +87,9 @@ router.get('/billing/checkout/:id(\\d+)', (req, res) => {
   const plan = getPlan(payment.plan);
   const { action, fields } = payuForm(payment, req.shop);
   res.setHeader('Referrer-Policy', 'no-referrer');
+  // PayU's /_payment redirects to its own checkout hosts; the form-action check follows redirects.
+  const csp = res.getHeader('Content-Security-Policy');
+  if (csp) res.setHeader('Content-Security-Policy', String(csp).replace(/form-action [^;]*/, "form-action 'self' https:"));
   render(res, {
     title: 'Secure payment',
     variant: 'shop',
