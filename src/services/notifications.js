@@ -1,4 +1,5 @@
 import { db, now } from '../db.js';
+import { publish } from '../lib/live.js';
 
 // In-app notifications. audience 'shop' rows belong to one shop; 'admin' rows
 // are for the super admin. dedupe_key makes repeated jobs (reminders) idempotent.
