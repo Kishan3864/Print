@@ -11,6 +11,7 @@ import {
   priceRupees,
   payuEnabled,
   paymentsOpenFor,
+  quotePlanChange,
   payuForm,
   shopPayments,
   startPayuPayment,
@@ -18,7 +19,7 @@ import {
 import { getShopById } from '../services/shops.js';
 import { messagePage, render } from '../views/layout.js';
 import { billingView } from '../views/shop-billing/billing.js';
-import { icon } from '../views/components.js';
+import { csrfField, icon } from '../views/components.js';
 import { receiptView } from '../views/shop-billing/receipt.js';
 
 // Shop area: "Plan & billing" – plan picker, PayU checkout, waiting screen, receipts.
@@ -68,6 +69,7 @@ router.post('/billing/pay', actionLimiter, (req, res) => {
     flash(req, 'error', 'Please choose a plan and Monthly or Yearly.');
     return res.redirect(303, BILLING);
   }
+  if (req.body.confirm !== '1') return res.redirect(303, `${BILLING}/review?plan=${plan.key}&cycle=${cycle}`);
   if (!paymentsOpenFor(shop)) return res.redirect(303, `${BILLING}/soon?plan=${plan.key}&cycle=${cycle}`);
   try {
     const payment = startPayuPayment(shop, plan.key, cycle);
@@ -76,6 +78,55 @@ router.post('/billing/pay', actionLimiter, (req, res) => {
     flash(req, 'error', err.message || 'Could not start the payment. Please try again in a minute.');
     res.redirect(303, BILLING);
   }
+});
+
+// Calculation first: what this choice costs today, then the button to PayU.
+router.get('/billing/review', (req, res) => {
+  const shop = req.shop;
+  const cycle = Object.hasOwn(CYCLES, req.query.cycle) ? req.query.cycle : 'monthly';
+  let q;
+  try {
+    q = quotePlanChange(shop, String(req.query.plan || ''), cycle);
+  } catch {
+    return res.redirect(303, BILLING);
+  }
+  const inr = (n) => '₹' + Number(n).toLocaleString('en-IN');
+  const TITLE = { new: 'Start your plan', renew: 'Renew your plan', upgrade: 'Upgrade your plan', downgrade: 'Switch plan at renewal' };
+  const row = (label, value, cls = '') => html`<div class="rv-row${cls}"><dt>${label}</dt><dd>${value}</dd></div>`;
+  render(res, {
+    title: TITLE[q.kind],
+    variant: 'shop',
+    active: 'billing',
+    body: html`<section class="container-narrow wait-page">
+      <div class="card card-pad rv-card">
+        <p class="bl-kicker">${q.plan.name} plan · ${CYCLES[cycle]}</p>
+        <h1>${TITLE[q.kind]}</h1>
+        ${q.kind === 'downgrade'
+          ? html`<p class="lead">You are on <b>${q.currentName}</b> till <b>${formatDate(shop.paid_until)}</b>. A smaller plan cannot start in the middle of a paid period – you would lose days you already paid for.</p>
+              <p class="lead">Choose <b>${q.plan.name}</b> when you renew after ${formatDate(shop.paid_until)}. Until then everything keeps working as it is.</p>
+              <div class="btn-row soon-actions"><a class="btn btn-primary btn-lg" href="${BILLING}">Back to my plan</a></div>`
+          : html`<dl class="rv-list">
+                ${q.kind === 'upgrade'
+                  ? html`${row('Current plan', `${q.currentName} · ${CYCLES[q.current.cycle]} · paid ${inr(q.current.amount_paise / 100)}`)}
+                      ${row('Days used', `${q.used} of ${q.total} days`)}
+                      ${row(`Credit for ${q.left} unused days`, `− ${inr(q.credit)}`, ' is-credit')}`
+                  : ''}
+                ${row(`${q.plan.name} · ${CYCLES[cycle]}`, inr(q.price))}
+                ${row('New period', `${formatDate(q.start)} – ${formatDate(q.end)}`)}
+                ${row('To pay now', inr(q.due), ' is-total')}
+              </dl>
+              ${q.kind === 'renew' ? html`<p class="hint">Renewing early adds the new period after your current end date – you lose nothing.</p>` : ''}
+              ${q.kind === 'upgrade' ? html`<p class="hint">Your ${q.currentName} plan ends now and ${q.plan.name} starts today. The unused part is taken off the price.</p>` : ''}
+              <form method="post" action="${BILLING}/pay" class="btn-row soon-actions">
+                ${csrfField(res)}
+                <input type="hidden" name="plan" value="${q.plan.key}"><input type="hidden" name="cycle" value="${cycle}"><input type="hidden" name="confirm" value="1">
+                <button class="btn btn-primary btn-lg" type="submit">${icon('shield')}<span>Pay ${inr(q.due)} securely</span></button>
+                <a class="btn btn-secondary btn-lg" href="${BILLING}">Back</a>
+              </form>
+              <p class="hint">Secure payment by PayU · UPI, cards, net banking</p>`}
+      </div>
+    </section>`,
+  });
 });
 
 // Shown while online payments are on hold (PayU live approval pending).

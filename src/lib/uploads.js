@@ -3,6 +3,7 @@ import path from 'node:path';
 import multer from 'multer';
 import { config, paths } from '../config.js';
 import { randomHex, formatBytes } from './util.js';
+import { shopFeatures } from '../services/billing.js';
 
 export const ALLOWED_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'cdr', 'ai', 'psd', 'eps', 'svg', 'zip', 'rar', '7z', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'heic', 'webp'];
 export const ACCEPT_ATTR = ALLOWED_EXT.map((e) => '.' + e).join(',');
@@ -136,10 +137,11 @@ export function uploadErrorMessage(err, l = {}) {
 }
 
 /** Limits for customer order files and shop proofs. `req.uploadShop` must be set by the route. */
-export const fileLimits = (req) =>
-  req.uploadShop?.is_demo
-    ? { files: config.limits.demoFiles, bytes: config.limits.demoFileBytes }
-    : { files: config.limits.orderFiles, bytes: config.limits.orderFileBytes };
+export const fileLimits = (req) => {
+  if (req.uploadShop?.is_demo) return { files: config.limits.demoFiles, bytes: config.limits.demoFileBytes };
+  const f = shopFeatures(req.uploadShop);
+  return { files: Math.min(f.files, config.limits.orderFiles), bytes: Math.min(f.fileMB * 1024 * 1024, config.limits.orderFileBytes) };
+};
 
 /** Customer files on the order form: field "files". Set req.uploadShop before using. */
 export const orderFilesUpload = makeUploader({

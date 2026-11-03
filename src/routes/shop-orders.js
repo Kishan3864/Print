@@ -5,7 +5,7 @@ import { clean, cleanLine, clampInt, flash, startOfTodayIso, ymd } from '../lib/
 import { STATUSES, STATUS_LABEL, TABS } from '../lib/status.js';
 import { actionLimiter } from '../lib/security.js';
 import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/uploads.js';
-import { isSampleShop, storageCapBytes } from '../services/billing.js';
+import { isSampleShop, shopFeatures, storageCapBytes } from '../services/billing.js';
 import { listShopNotifications } from '../services/notifications.js';
 import { shopCounts, storageUsed } from '../services/shops.js';
 import {
@@ -159,6 +159,10 @@ router.post(`/orders/${NO}/status`, loadOrder, (req, res) => {
 
 // ---------- reprint: same details + latest files as a new order ----------
 router.post(`/orders/${NO}/reprint`, loadOrder, (req, res) => {
+  if (!shopFeatures(req.shop).reprint) {
+    flash(req, 'info', 'One-tap reprints are part of the Pro plan – upgrade in Plan & billing.');
+    return res.redirect(303, back(req.order));
+  }
   try {
     const copy = reprintOrder(req.shop, req.order);
     flash(req, 'success', `Reprint created as P-${copy.order_no} with the same file.`);

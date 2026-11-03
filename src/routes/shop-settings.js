@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { Router } from 'express';
+import { shopFeatures } from '../services/billing.js';
 import QRCode from 'qrcode';
 import { actionLimiter, loginLimiter, loginShop } from '../lib/security.js';
 import { logoUpload, discardUploads } from '../lib/uploads.js';
@@ -192,6 +193,14 @@ router.post('/settings', actionLimiter, demoLocked, logoUpload, (req, res, next)
     return showSettings(req, res, { values, errors, status: 422 });
   }
 
+  // Logo and brand colour are part of the Pro and Business plans.
+  if (!shopFeatures(shop).branding && (file || fields.brand_color !== shop.brand_color)) {
+    discardUploads(req);
+    delete fields.brand_color;
+    updateShopSettings(shop.id, fields);
+    flash(req, 'info', 'Settings saved. Logo and brand colour are part of the Pro plan – upgrade in Plan & billing to use them.');
+    return res.redirect('/shop/settings');
+  }
   try {
     if (file) fields.logo_file = file.filename;
     updateShopSettings(shop.id, fields);

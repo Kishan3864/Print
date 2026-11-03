@@ -284,3 +284,32 @@
 .soon-list .icon { flex: none; margin-top: 2px; color: var(--primary); width: 18px; height: 18px; }
 .soon-actions { justify-content: center; margin-bottom: 14px; }
 @media (max-width: 480px) { .wait-card { padding: 28px 18px; } .soon-actions .btn { width: 100%; } }
+
+/* review (calculation before payment) */
+.rv-card { padding: 30px 26px; }
+.rv-card h1 { margin: 4px 0 16px; }
+.rv-list { margin: 0 0 14px; display: grid; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.rv-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: .9rem; }
+.rv-row:last-child { border-bottom: 0; }
+.rv-row dt { color: var(--muted); }
+.rv-row dd { margin: 0; font-weight: 650; text-align: right; }
+.rv-row.is-credit dd { color: var(--success); }
+.rv-row.is-total { background: var(--primary-soft); font-size: 1rem; }
+.rv-row.is-total dt, .rv-row.is-total dd { color: var(--text); font-weight: 800; }
+@media (max-width: 480px) { .rv-card { padding: 22px 16px; } .rv-row { flex-direction: column; gap: 2px; } .rv-row dd { text-align: left; } }
+
+/* active plan details + collapsible plan change */
+.bl-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0 10px; }
+.bl-facts > div { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.bl-facts dt { font-size: .74rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.bl-facts dd { margin: 3px 0 0; font-weight: 650; font-size: .9rem; }
+.bl-feats { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 5px; }
+.bl-feats li { display: flex; gap: 8px; align-items: flex-start; font-size: .86rem; color: var(--text-2); }
+.bl-feats .icon { width: 16px; height: 16px; margin-top: 2px; color: var(--success); flex: none; }
+.bl-change { margin: 18px 0; padding: 0; overflow: hidden; }
+.bl-change-sum { display: flex; gap: 12px; align-items: center; padding: 16px 18px; cursor: pointer; }
+.bl-change-sum > span { display: flex; flex-direction: column; }
+.bl-change-sum small { color: var(--muted); font-size: .82rem; }
+.bl-change[open] .bl-change-sum { border-bottom: 1px solid var(--border); }
+.bl-change > :not(summary) { padding: 0 18px 18px; }
+tr.is-superseded { opacity: .55; }

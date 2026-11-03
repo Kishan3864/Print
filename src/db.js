@@ -204,6 +204,11 @@ const MIGRATIONS = [
    ALTER TABLE files ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
    ALTER TABLE files ADD COLUMN replaced_at TEXT;
    ALTER TABLE shops ADD COLUMN paper_options TEXT NOT NULL DEFAULT '[]';`,
+
+  // 4: plan changes – renew / upgrade with credit for unused days; upgraded payments are superseded
+  `ALTER TABLE payments ADD COLUMN kind TEXT NOT NULL DEFAULT 'new';
+   ALTER TABLE payments ADD COLUMN credit_paise INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE payments ADD COLUMN superseded_at TEXT;`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

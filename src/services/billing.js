@@ -24,6 +24,24 @@ export const DEFAULT_PLANS = [
 ];
 export const PLAN_KEYS = DEFAULT_PLANS.map((p) => p.key);
 
+/** What each plan unlocks. Enforced in uploads (files/size), settings (branding) and reprints. */
+export const PLAN_FEATURES = {
+  starter: { files: 3, fileMB: 50, branding: false, reprint: false, priority: false },
+  pro: { files: 5, fileMB: 100, branding: true, reprint: true, priority: false },
+  business: { files: 5, fileMB: 100, branding: true, reprint: true, priority: true },
+};
+/** Features of a shop's current plan (live shops). Demo shops get the Pro set. */
+export const shopFeatures = (shop) => PLAN_FEATURES[shop?.is_demo ? 'pro' : shop?.plan] || PLAN_FEATURES.starter;
+export function featureList(key) {
+  const f = PLAN_FEATURES[key] || PLAN_FEATURES.starter;
+  return [
+    `Up to ${f.files} files per order, ${f.fileMB} MB each`,
+    f.branding ? 'Your logo & brand colour on the order page' : 'Standard order page (no logo)',
+    f.reprint ? 'One-tap reprints' : null,
+    f.priority ? 'Priority support' : null,
+  ].filter(Boolean);
+}
+
 /** Plans with admin-edited prices (stored in meta 'plans'). Prices are whole rupees. */
 export function getPlans() {
   let saved = {};
@@ -122,14 +140,57 @@ export function revenueStats() {
   };
 }
 
-function createPaymentRow(shop, plan, cycle, method, note = '') {
+function createPaymentRow(shop, plan, cycle, method, note = '', { amountPaise = null, kind = 'new', creditPaise = 0 } = {}) {
   const reference = `pd_${shop.id}_${randomHex(6)}`;
   const info = db
     .prepare(
-      "INSERT INTO payments (shop_id, plan, cycle, amount_paise, method, status, reference, note, created_at) VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?)"
+      "INSERT INTO payments (shop_id, plan, cycle, amount_paise, method, status, reference, note, created_at, kind, credit_paise) VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?, ?)"
     )
-    .run(shop.id, plan.key, cycle, Math.round(priceRupees(plan, cycle) * 100), method, reference, note, now());
+    .run(shop.id, plan.key, cycle, amountPaise ?? Math.round(priceRupees(plan, cycle) * 100), method, reference, note, now(), kind, creditPaise);
   return getPayment(info.lastInsertRowid);
+}
+
+/** The paid payment whose period covers today (the plan in use), if any. */
+export function currentPayment(shop) {
+  const today = ymd();
+  return db
+    .prepare("SELECT * FROM payments WHERE shop_id = ? AND status = 'paid' AND superseded_at IS NULL AND period_start <= ? AND period_end >= ? ORDER BY id DESC LIMIT 1")
+    .get(shop.id, today, today);
+}
+
+const dayCount = (from, to) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000) + 1;
+
+/**
+ * What choosing plan/cycle costs right now:
+ *   new       – not on a running plan: full price from today
+ *   renew     – same plan & cycle: full price, starts after the current end date
+ *   upgrade   – higher value per day: new period from today, unused days of the current plan credited
+ *   downgrade – lower value: not possible mid-period (choose it when the current plan ends)
+ */
+export function quotePlanChange(shop, planKey, cycle) {
+  const plan = activePlans().find((p) => p.key === planKey);
+  if (!plan || !CYCLES[cycle]) throw new Error('Choose a plan and billing cycle.');
+  const price = priceRupees(plan, cycle);
+  const today = ymd();
+  const cur = shop.status === 'active' && !shop.is_demo && shop.paid_until >= today ? currentPayment(shop) : null;
+  if (!cur) {
+    const end = periodEnd(today, cycle);
+    return { kind: 'new', plan, cycle, price, credit: 0, due: price, start: today, end };
+  }
+  if (cur.plan === plan.key && cur.cycle === cycle) {
+    const start = addDays(shop.paid_until, 1);
+    return { kind: 'renew', plan, cycle, price, credit: 0, due: price, start, end: periodEnd(start, cycle), current: cur };
+  }
+  const total = dayCount(cur.period_start, cur.period_end);
+  const left = Math.max(0, dayCount(today, cur.period_end));
+  const used = total - left;
+  // Value of the running period = what was paid plus any credit carried into it.
+  const perDayOld = (cur.amount_paise + (cur.credit_paise || 0)) / 100 / total;
+  const perDayNew = price / dayCount(today, periodEnd(today, cycle));
+  const base = { plan, cycle, price, current: cur, used, left, total, currentName: getPlan(cur.plan)?.name || cur.plan };
+  if (perDayNew <= perDayOld) return { ...base, kind: 'downgrade', credit: 0, due: 0, start: addDays(shop.paid_until, 1), end: periodEnd(addDays(shop.paid_until, 1), cycle) };
+  const credit = Math.floor(perDayOld * left);
+  return { ...base, kind: 'upgrade', credit, due: Math.max(1, price - credit), start: today, end: periodEnd(today, cycle) };
 }
 
 /**
@@ -143,11 +204,12 @@ export function markPaid(paymentId, { providerPaymentId = null, amountPaise = nu
   const shop = getShopById(payment.shop_id);
   if (!shop || isSampleShop(shop)) throw new Error('Shop not found.');
   const wasDemo = Boolean(shop.is_demo);
-  const start = nextPeriodStart(shop);
+  const start = payment.kind === 'upgrade' ? ymd() : nextPeriodStart(shop);
   const end = periodEnd(start, payment.cycle);
   const at = now();
   let demoFiles = [];
   db.transaction(() => {
+    if (payment.kind === 'upgrade') db.prepare("UPDATE payments SET superseded_at = ? WHERE shop_id = ? AND status = 'paid' AND superseded_at IS NULL AND id <> ?").run(at, shop.id, payment.id);
     db.prepare("UPDATE payments SET status = 'paid', paid_at = ?, provider_payment_id = COALESCE(?, provider_payment_id), period_start = ?, period_end = ? WHERE id = ?").run(
       at, providerPaymentId, start, end, payment.id
     );
@@ -211,7 +273,10 @@ export function startPayuPayment(shop, planKey, cycle) {
   const plan = activePlans().find((p) => p.key === planKey);
   if (!plan || !CYCLES[cycle]) throw new Error('Choose a plan and billing cycle.');
   if (shop.is_demo) throw new Error('Demo shops cannot be paid for. Register your real shop to go live.');
-  return createPaymentRow(shop, plan, cycle, 'payu');
+  const q = quotePlanChange(shop, plan.key, cycle);
+  if (q.kind === 'downgrade') throw new Error(`You can switch to ${plan.name} when your current plan ends on ${formatDate(shop.paid_until)}.`);
+  const note = q.kind === 'upgrade' ? `Upgrade from ${q.currentName}: ${q.used} of ${q.total} days used, credit ₹${q.credit}` : '';
+  return createPaymentRow(shop, plan, cycle, 'payu', note, { amountPaise: Math.round(q.due * 100), kind: q.kind, creditPaise: q.credit * 100 });
 }
 
 /** Fields for the auto-submitted form to PayU. */

@@ -1,7 +1,8 @@
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { formatDate } from '../../lib/util.js';
-import { CYCLES, daysLeft, formatINR, getPlan } from '../../services/billing.js';
+import { CYCLES, daysLeft, featureList, formatINR, getPlan } from '../../services/billing.js';
+import { formatDateTime } from '../../lib/util.js';
 import { orderFormUrl } from '../../services/notify.js';
 import { csrfField, icon } from '../components.js';
 import { METHOD_SHORT, cell, cycleLabel, paise, periodText, plural, savingLabel, yearlySaving } from './common.js';
@@ -38,7 +39,7 @@ function periodBar(left, total) {
   return html`<progress class="bl-meter" max="${max}" value="${left + 1}" aria-hidden="true"></progress>`;
 }
 
-function statusCard(shop, mode) {
+function statusCard(shop, mode, current = null) {
   const plan = getPlan(shop.plan);
   const left = daysLeft(shop);
   const liveLink = `${config.baseUrl}/${shop.slug}`;
@@ -138,6 +139,15 @@ function statusCard(shop, mode) {
         <p class="bl-kicker">Current plan</p>
         <h2 class="bl-status-title" id="bl-status-title">${name} plan${cycle}</h2>
         <p class="bl-status-text">Active till <b>${formatDate(shop.paid_until)}</b>${left === 0 ? ' – ends today' : ''}${soon ? '. Renew now to avoid a break.' : ''}</p>
+        ${current
+          ? html`<dl class="bl-facts">
+              <div><dt>Status</dt><dd><span class="pill pill-shop-active">Active</span></dd></div>
+              <div><dt>Started</dt><dd>${formatDate(current.period_start)}</dd></div>
+              <div><dt>Ends</dt><dd>${formatDate(current.period_end)}, 11:59 pm</dd></div>
+              <div><dt>Paid</dt><dd>${formatINR(current.amount_paise / 100)} on ${formatDateTime(current.paid_at)}</dd></div>
+            </dl>`
+          : ''}
+        <ul class="bl-feats">${featureList(shop.plan).map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}</ul>
       </div>
       ${left === 0 ? daysBlock('0', 'ends today') : daysBlock(left, left === 1 ? 'day left' : 'days left')}
     </div>
@@ -196,6 +206,7 @@ function planCard(plan, { mode, shop, canPay, featured, chosen }) {
         <span class="bl-when-y">${saving ? html`Just ${formatINR(saving.perMonth)} a month · <b class="bl-save">${savingLabel(saving)}</b>` : `${monthly} a month if paid monthly`}</span>
       </p>
       <p class="bl-storage">${icon('file')}<span><b>${plan.storageGb} GB</b> file storage</span></p>
+      <ul class="bl-feats">${featureList(plan.key).map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}</ul>
     </div>
     ${showButton
       ? html`<button class="btn ${isFeatured ? 'btn-primary' : 'btn-secondary'} btn-block bl-pay" type="submit" name="plan" value="${plan.key}" data-loading="Opening secure payment…"${canPay ? '' : raw(' disabled')}>
@@ -281,8 +292,8 @@ function history(payments) {
           <tbody>
             ${payments.map((p) => {
               const plan = getPlan(p.plan);
-              return html`<tr>
-                <td data-label="Date" class="bl-c-date">${formatDate(p.paid_at)}</td>
+              return html`<tr${p.superseded_at ? raw(' class="is-superseded"') : ''}>
+                <td data-label="Date" class="bl-c-date">${formatDateTime(p.paid_at)}${p.superseded_at ? html`<br><small>Replaced by upgrade</small>` : ''}</td>
                 <td data-label="Plan" class="bl-c-plan">${cell(`${plan ? plan.name : p.plan} · ${cycleLabel(p.cycle)}`, METHOD_SHORT[p.method] || p.method)}</td>
                 <td data-label="Period" class="bl-c-period">${periodText(p)}</td>
                 <td data-label="Amount" class="num bl-c-amount"><b>${paise(p.amount_paise)}</b></td>
@@ -307,6 +318,8 @@ function helpCard(mode) {
 
 export function billingView(res, { shop, state, sample, plans, payments, razorpayOn, choice = {} }) {
   const mode = billingMode(shop, state, sample);
+  const today = new Date().toISOString().slice(0, 10);
+  const current = payments.find((p) => !p.superseded_at && p.period_start <= today && p.period_end >= today) || null;
   return {
     title: 'Plan & billing',
     variant: 'shop',
@@ -319,8 +332,13 @@ export function billingView(res, { shop, state, sample, plans, payments, razorpa
           <p>Your Brighton Print plan, payments and receipts.</p>
         </div>
       </header>
-      ${statusCard(shop, mode)}
-      ${planPicker(res, { shop, mode, plans, razorpayOn, choice })}
+      ${statusCard(shop, mode, current)}
+      ${mode === 'active'
+        ? html`<details class="card bl-change"${choice.plan ? raw(' open') : ''}>
+            <summary class="bl-change-sum">${icon('settings')}<span><b>Change or renew plan</b><small>Upgrade any time – unused days are credited. Renew early – time is added after your end date.</small></span></summary>
+            ${planPicker(res, { shop, mode, plans, razorpayOn, choice })}
+          </details>`
+        : planPicker(res, { shop, mode, plans, razorpayOn, choice })}
       ${history(payments)}
       ${helpCard(mode)}
     </div>`,
