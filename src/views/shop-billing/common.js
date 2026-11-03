@@ -30,10 +30,11 @@ export function yearlySaving(plan) {
   return { save, months: Math.floor(save / plan.monthly + 1e-9), perMonth: Math.round(plan.yearly / 12) };
 }
 
-/** Short label for the yearly saving: "2 months free" or "Save ₹500". */
+/** Short label for the yearly saving, e.g. "10% off". */
 export function savingLabel(saving) {
   if (!saving) return '';
-  return saving.months >= 1 ? `${plural(saving.months, 'month')} free` : `Save ${formatINR(saving.save)}`;
+  const pct = Math.round((saving.save / (saving.save + saving.perMonth * 12)) * 100);
+  return pct >= 1 ? `${pct}% off` : `Save ${formatINR(saving.save)}`;
 }
 
 /** Table cell content: a main line and an optional muted line (one wrapper, so phone card rows stay two-column). */
