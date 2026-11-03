@@ -34,5 +34,5 @@ export function customerHeader(res, shop) {
 
 export const customerFooter = () =>
   html`<footer class="cust-footer">
-    <a href="/" target="_blank" rel="noopener">${logoMark(18)}<span>Powered by <b>PrintDesk</b></span></a>
+    <a href="https://brightonsolution.com" target="_blank" rel="noopener">${logoMark(18)}<span>Powered by <b>Brighton Solution</b></span></a>
   </footer>`;

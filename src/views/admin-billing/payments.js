@@ -58,7 +58,7 @@ export function paymentsView({ stats: s, payments, filter, counts }) {
       <div>
         <p class="eyebrow">Billing</p>
         <h1>Payments</h1>
-        <p>Every subscription payment – online (Razorpay) and recorded by you.</p>
+        <p>Every subscription payment – online (PayU) and recorded by you.</p>
       </div>
       <div class="btn-row">
         <a class="btn btn-secondary" href="/admin/plans">${icon('settings')}<span>Plans &amp; prices</span></a>

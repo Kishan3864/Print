@@ -42,7 +42,8 @@
     pending = false;
     fetch(location.href, { credentials: 'same-origin', headers: { 'X-Live': '1' } })
       .then(function (r) {
-        if (r.redirected || !r.ok) return null;
+        if (r.redirected && r.url !== location.href) { location.href = r.url; return null; }
+        if (!r.ok) return null;
         return r.text();
       })
       .then(function (html) {

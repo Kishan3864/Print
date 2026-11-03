@@ -157,6 +157,46 @@ const MIGRATIONS = [
      read_at     TEXT
    );
    CREATE INDEX IF NOT EXISTS idx_notifications_shop ON notifications(audience, shop_id, read_at);`,
+
+  // 2: PayU as a payment method, admin-made demo links with their own expiry
+  `CREATE TABLE payments_v2 (
+     id                  INTEGER PRIMARY KEY,
+     shop_id             INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     plan                TEXT NOT NULL,
+     cycle               TEXT NOT NULL CHECK (cycle IN ('monthly','yearly')),
+     amount_paise        INTEGER NOT NULL,
+     currency            TEXT NOT NULL DEFAULT 'INR',
+     method              TEXT NOT NULL CHECK (method IN ('payu','razorpay','manual')),
+     status              TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created','paid','failed','cancelled')),
+     reference           TEXT NOT NULL UNIQUE,
+     provider_link_id    TEXT,
+     provider_link_url   TEXT,
+     provider_payment_id TEXT,
+     note                TEXT NOT NULL DEFAULT '',
+     period_start        TEXT,
+     period_end          TEXT,
+     created_at          TEXT NOT NULL,
+     paid_at             TEXT
+   );
+   INSERT INTO payments_v2 SELECT * FROM payments;
+   DROP TABLE payments;
+   ALTER TABLE payments_v2 RENAME TO payments;
+   CREATE INDEX IF NOT EXISTS idx_payments_shop ON payments(shop_id, created_at);
+   CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, paid_at);
+
+   ALTER TABLE shops ADD COLUMN demo_expires_at TEXT;
+
+   CREATE TABLE IF NOT EXISTS demo_links (
+     id          INTEGER PRIMARY KEY,
+     token       TEXT NOT NULL UNIQUE,
+     label       TEXT NOT NULL,
+     hours       INTEGER NOT NULL,
+     expires_at  TEXT NOT NULL,
+     shop_id     INTEGER REFERENCES shops(id) ON DELETE SET NULL,
+     revoked_at  TEXT,
+     opened_at   TEXT,
+     created_at  TEXT NOT NULL
+   );`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

@@ -7,7 +7,7 @@ import { config, paths, ROOT } from './config.js';
 import { html } from './lib/html.js';
 import { csrfProtect, loadSession, requireAdmin } from './lib/security.js';
 import { cssBundle } from './lib/assets.js';
-import { handleRazorpayWebhook } from './services/billing.js';
+import { handlePayuReturn } from './services/billing.js';
 import { publishShop, stream } from './lib/live.js';
 import { getOrderByToken } from './services/orders.js';
 import { isHexColor, inkFor, SLUG_ROUTE } from './lib/util.js';
@@ -19,6 +19,7 @@ import shopRoutes from './routes/shop.js';
 import customerRoutes from './routes/customer.js';
 import adminBillingRoutes from './routes/admin-billing.js';
 import adminSupportRoutes from './routes/admin-support.js';
+import { adminDemoRouter, tryRouter } from './routes/demo-links.js';
 
 export function createApp() {
   const app = express();
@@ -40,7 +41,7 @@ export function createApp() {
           manifestSrc: ["'self'"],
           workerSrc: ["'self'"],
           mediaSrc: ["'self'"],
-          formAction: ["'self'"],
+          formAction: ["'self'", 'https://secure.payu.in', 'https://test.payu.in'],
           frameAncestors: ["'none'"],
           baseUri: ["'self'"],
           objectSrc: ["'none'"],
@@ -105,15 +106,17 @@ export function createApp() {
 
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
-  // Razorpay webhook: raw body for the signature, no session/CSRF.
-  app.post('/webhooks/razorpay', express.raw({ type: '*/*', limit: '100kb' }), (req, res) => {
+  // PayU posts the result back here from its own site (no session cookie, no CSRF token):
+  // the payment is identified by txnid and verified with PayU's reverse hash.
+  app.post('/pay/payu/return', express.urlencoded({ extended: false, limit: '50kb' }), (req, res) => {
+    let id = '';
     try {
-      handleRazorpayWebhook(req.body, req.get('x-razorpay-signature'));
-      res.json({ ok: true });
+      const payment = handlePayuReturn(req.body || {});
+      id = payment.id;
     } catch (err) {
-      console.error('[razorpay webhook]', err.message);
-      res.status(err.status || 500).json({ ok: false });
+      console.error('[payu]', err.message);
     }
+    res.redirect(303, id ? `/shop/billing/waiting/${id}` : '/shop/billing?payment=error');
   });
 
   // Admin panel on its own host (ADMIN_HOST): admin.example.com/x is served as /admin/x,
@@ -175,10 +178,12 @@ export function createApp() {
     stream(req, res, channels);
   });
 
+  app.use('/', tryRouter);
   app.use('/', publicRoutes);
   app.use('/admin', adminRoutes);
   app.use('/admin', requireAdmin, adminBillingRoutes);
   app.use('/admin', requireAdmin, adminSupportRoutes);
+  app.use('/admin', adminDemoRouter);
   app.use('/shop', shopRoutes);
   // Customer pages: live shops at /<slug>, demo shops at /demo/<slug>.
   app.use('/demo', customerRoutes);

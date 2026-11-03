@@ -36,8 +36,8 @@ function ownDemoCard(res, { realShop, ownDemo }) {
         ? html`<p class="dm-note">${icon('info')}<span>You already have a demo shop: <b>${ownDemo.name}</b>.</span></p>
             <a class="btn btn-primary btn-lg btn-block" href="/shop"><span>Open my demo shop</span>${icon('arrowRight')}</a>`
         : html`${realShop ? html`<p class="dm-note">${icon('info')}<span>You are logged in as ${realShop.name}. Creating a demo shop logs you out of it.</span></p>` : ''}
-            <a class="btn btn-primary btn-lg btn-block" href="/demo/register"><span>Create my demo shop</span>${icon('arrowRight')}</a>
-            <p class="dm-own-fine">Takes about a minute · no card needed</p>`}
+            <a class="btn btn-primary btn-lg btn-block" href="https://ig.me/m/brighton.solution" target="_blank" rel="noopener"><span>Get my personal demo link</span>${icon('arrowRight')}</a>
+            <p class="dm-own-fine">DM us – we send your own demo link (valid 24 hours)</p>`}
     </div>
   </div>`;
 }

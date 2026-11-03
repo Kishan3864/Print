@@ -30,6 +30,11 @@ router.use((req, res, next) => {
     if (req.method !== 'GET') return res.redirect(303, '/shop');
     return renderRejected(req, res);
   }
+  if (state === 'expired' && req.shop.is_demo) {
+    if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Demo ended' });
+    if (req.method !== 'GET') return res.redirect(303, '/shop');
+    return renderDemoEnded(req, res);
+  }
   if ((state === 'pending' || state === 'expired') && !ALWAYS_OPEN.test(req.path)) {
     if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Plan not active' });
     return res.redirect(303, '/shop/billing');
@@ -42,6 +47,26 @@ router.use((req, res, next) => {
   if (req.method !== 'POST') return next();
   return (req.shop.is_demo && req.shop.slug === config.demo.slug ? demoWriteLimiter : shopWriteLimiter)(req, res, next);
 });
+
+function renderDemoEnded(req, res) {
+  render(res, {
+    title: 'Demo ended',
+    variant: 'bare',
+    body: html`<section class="waiting">
+      <div class="waiting-card card">
+        <div class="waiting-mark">${logoMark(56)}</div>
+        <span class="pill pill-shop-expired">Demo ended</span>
+        <h1>Your demo time is over</h1>
+        <p class="lead">Thanks for trying PrintDesk. Register your own shop to start taking real orders – it takes 2 minutes.</p>
+        <div class="waiting-actions">
+          <a class="btn btn-primary btn-lg" href="/register">Register your shop</a>
+          <a class="btn btn-secondary" href="https://ig.me/m/${config.instagram}" target="_blank" rel="noopener">Message us</a>
+          <form method="post" action="/logout" class="inline-form">${csrfField(res)}<button class="btn btn-ghost" type="submit">${icon('logout')}<span>Log out</span></button></form>
+        </div>
+      </div>
+    </section>`,
+  });
+}
 
 function renderRejected(req, res) {
   render(res, {

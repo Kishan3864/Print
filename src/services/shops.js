@@ -27,6 +27,7 @@ export function shopState(shop) {
   if (!shop) return 'pending';
   if (shop.status !== 'active') return shop.status;
   if (shop.is_demo && shop.slug === config.demo.slug) return 'active';
+  if (shop.is_demo && shop.demo_expires_at) return Date.parse(shop.demo_expires_at) > Date.now() ? 'active' : 'expired';
   if (!shop.paid_until || shop.paid_until < ymd()) return 'expired';
   return 'active';
 }

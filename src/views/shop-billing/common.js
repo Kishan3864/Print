@@ -4,8 +4,8 @@ import { CYCLES, formatINR } from '../../services/billing.js';
 
 // Small pieces shared by the shop billing pages and the admin billing pages.
 
-export const METHOD_LABEL = { razorpay: 'Razorpay', manual: 'UPI / cash (recorded by Brighton Solution)' };
-export const METHOD_SHORT = { razorpay: 'Online (Razorpay)', manual: 'UPI / cash' };
+export const METHOD_LABEL = { payu: 'PayU', razorpay: 'Razorpay', manual: 'UPI / cash (recorded by Brighton Solution)' };
+export const METHOD_SHORT = { payu: 'Online (PayU)', razorpay: 'Online (Razorpay)', manual: 'UPI / cash' };
 export const PAYMENT_STATUS_LABEL = { paid: 'Paid', created: 'Not completed', failed: 'Failed', cancelled: 'Cancelled' };
 
 /** ₹ amount: whole rupees as "₹4,990", otherwise two decimals ("₹4,500.50"). */

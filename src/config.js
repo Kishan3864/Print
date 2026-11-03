@@ -51,10 +51,10 @@ export const config = {
   // Admin panel lives on its own host in production (e.g. adminprint.brightonsolution.com).
   // Empty = served at /admin on the main host (local development).
   adminHost: (env.ADMIN_HOST || '').trim().toLowerCase(),
-  razorpay: {
-    keyId: env.RAZORPAY_KEY_ID || '',
-    keySecret: env.RAZORPAY_KEY_SECRET || '',
-    webhookSecret: env.RAZORPAY_WEBHOOK_SECRET || '',
+  payu: {
+    key: env.PAYU_KEY || '',
+    salt: env.PAYU_SALT || '',
+    test: bool(env.PAYU_TEST, false),
   },
   demo: {
     slug: 'demo-print-studio',
@@ -80,7 +80,7 @@ export const config = {
   companyUrl: 'https://brightonsolution.com',
 };
 config.smtp.enabled = Boolean(config.smtp.host);
-config.razorpay.enabled = Boolean(config.razorpay.keyId && config.razorpay.keySecret);
+config.payu.enabled = Boolean(config.payu.key && config.payu.salt);
 // Public address of the admin panel (for emails / links).
 config.adminUrl = config.adminHost ? `${config.baseUrl.startsWith('https') ? 'https' : 'http'}://${config.adminHost}/admin` : `${config.baseUrl}/admin`;
 

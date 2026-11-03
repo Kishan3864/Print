@@ -190,7 +190,7 @@ export function posterView(res, { shop }) {
             <li><span class="set-step-no">2</span><span>Upload files &amp; choose size</span></li>
             <li><span class="set-step-no">3</span><span>Get your order number</span></li>
           </ol>
-          <footer class="set-poster-foot">${logoMark(18)}<span>Powered by <b>PrintDesk</b></span></footer>
+          <footer class="set-poster-foot">${logoMark(18)}<span>Powered by <b>Brighton Solution</b></span></footer>
         </article>
       </div>`,
   };

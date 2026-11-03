@@ -111,12 +111,11 @@ sudo certbot --nginx -d print.brightonsolution.com -d adminprint.brightonsolutio
 cd /var/www/printdesk && git pull && npm ci --omit=dev && pm2 reload printdesk
 ```
 
-## Payments (Razorpay) – when your account is ready
+## Payments (PayU) – when your account is ready
 
-1. Razorpay Dashboard → Account & Settings → API Keys → put `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` in `.env`.
-2. Webhooks → URL `https://print.brightonsolution.com/webhooks/razorpay`, event `payment_link.paid`,
-   secret → `RAZORPAY_WEBHOOK_SECRET` in `.env`.
-3. `pm2 reload printdesk`. Until then, record UPI payments in Admin → shop → "Record payment".
+1. PayU Dashboard → Key & Salt → put `PAYU_KEY` and `PAYU_SALT` in `.env` (`PAYU_TEST=true` to try with test keys first).
+2. `pm2 reload printdesk`. PayU sends customers back to `https://print.brightonsolution.com/pay/payu/return` automatically.
+3. Until then, record UPI payments in Admin → shop → "Record payment".
 
 ## Rollback (removes only PrintDesk)
 

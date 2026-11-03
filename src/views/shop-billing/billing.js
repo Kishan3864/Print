@@ -52,7 +52,7 @@ function statusCard(shop, mode) {
           <h2 class="bl-status-title" id="bl-status-title">This is the shared demo shop</h2>
           <p class="bl-status-text">Everyone trying PrintDesk uses this shop, so payments are switched off here and the sample data resets every ${config.demo.resetHours} hours. Want to try it with your own shop name and link?</p>
           <div class="btn-row bl-status-actions">
-            <a class="btn btn-primary" href="/demo/register">${icon('sparkle')}<span>Create my own demo shop</span></a>
+            <a class="btn btn-primary" href="/register">${icon('sparkle')}<span>Register your shop</span></a>
             <a class="btn btn-secondary" href="/register">${icon('store')}<span>Register my shop</span></a>
           </div>
           <p class="hint">Your own demo is free for ${config.demo.trialDays} days – no payment needed.</p>
@@ -107,7 +107,7 @@ function statusCard(shop, mode) {
       </div>
       <ol class="bl-steps" aria-label="How it works">
         <li><span>1</span>Pick a plan below</li>
-        <li><span>2</span>Pay on Razorpay's secure page</li>
+        <li><span>2</span>Pay on PayU's secure page</li>
         <li><span>3</span>Your link is live – share it</li>
       </ol>
     </section>`;
@@ -262,7 +262,7 @@ function planPicker(res, { shop, mode, plans, razorpayOn, choice }) {
     ${mode === 'sample'
       ? ''
       : html`<ul class="bl-trust">
-          <li>${icon('shield')}<span>Secure payment by Razorpay · UPI, cards, net banking</span></li>
+          <li>${icon('shield')}<span>Secure payment by PayU · UPI, cards, net banking</span></li>
           <li>${icon('check')}<span>Shop switched on instantly after payment</span></li>
           <li>${icon('file')}<span>Receipt for every payment</span></li>
         </ul>`}
@@ -341,7 +341,7 @@ export function checkoutView(res, { payment, plan }) {
         <h1>Opening secure payment…</h1>
         <p class="lead">${plan ? plan.name : payment.plan} plan · ${cycleLabel(payment.cycle)} · <b>${paise(payment.amount_paise)}</b></p>
         <a class="btn btn-primary btn-lg btn-block" href="${payment.provider_link_url}" data-bl-autogo rel="noreferrer">${icon('shield')}<span>Continue to payment</span></a>
-        <p class="hint">You will pay on Razorpay's secure page (UPI, cards, net banking) and come straight back here.</p>
+        <p class="hint">You will pay on PayU's secure page (UPI, cards, net banking) and come straight back here.</p>
         <a class="btn btn-ghost btn-sm" href="/shop/billing">${icon('arrowLeft')}<span>Back to plans</span></a>
       </div>
     </div>`,

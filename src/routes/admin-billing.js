@@ -75,7 +75,7 @@ router.post('/plans', (req, res) => {
   });
   let formError = Object.keys(errors).length ? 'Please fix the highlighted fields.' : '';
   if (!formError && !typed.some((p) => p.active)) formError = 'Keep at least one plan shown to shops – otherwise nobody can pay.';
-  // Online payment needs at least ₹1 (Razorpay minimum).
+  // Online payment needs at least ₹1 (PayU minimum).
   const free = typed.find((p) => p.active && (p.monthly < 1 || p.yearly < 1));
   if (!formError && free) formError = `${free.name || free.key} is shown to shops, so it needs a Monthly and a Yearly price of at least ₹1 – or untick “Shown to shops”.`;
   if (formError) {

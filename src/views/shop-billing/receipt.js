@@ -40,7 +40,7 @@ export function receiptView({ shop, payment }) {
           <div><dt>Receipt no.</dt><dd class="mono">${payment.reference}</dd></div>
           <div><dt>Date paid</dt><dd>${formatDate(payment.paid_at)}</dd></div>
           <div><dt>Payment method</dt><dd>${METHOD_LABEL[payment.method] || payment.method}</dd></div>
-          ${payment.provider_payment_id ? html`<div><dt>Razorpay payment ID</dt><dd class="mono">${payment.provider_payment_id}</dd></div>` : ''}
+          ${payment.provider_payment_id ? html`<div><dt>PayU payment ID</dt><dd class="mono">${payment.provider_payment_id}</dd></div>` : ''}
         </dl>
 
         <div class="bl-receipt-parties">

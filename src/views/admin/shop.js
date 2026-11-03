@@ -147,7 +147,7 @@ function paymentsTable(payments) {
             <td data-label="Date"><span class="nowrap">${formatDate(p.paid_at || p.created_at)}</span></td>
             <td data-label="Plan"><span class="nowrap">${planName(p.plan) || p.plan}</span> <span class="adm-sub nowrap">${CYCLES[p.cycle] || p.cycle}</span></td>
             <td data-label="Period">${p.period_start ? html`<span class="nowrap">${formatDate(p.period_start)} – ${formatDate(p.period_end)}</span>` : html`<span class="adm-sub">—</span>`}</td>
-            <td data-label="Method">${p.method === 'manual' ? 'Manual' : 'Razorpay'}${p.note ? html`<span class="adm-paynote">${p.note}</span>` : ''}</td>
+            <td data-label="Method">${p.method === 'manual' ? 'Manual' : 'PayU'}${p.note ? html`<span class="adm-paynote">${p.note}</span>` : ''}</td>
             <td data-label="Status"><span class="pill adm-pay-${p.status}">${PAY_LABEL[p.status] || p.status}</span></td>
             <td data-label="Amount" class="num"><b class="adm-amount">${formatINR(p.amount_paise / 100)}</b></td>
           </tr>`

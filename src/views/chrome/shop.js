@@ -94,8 +94,11 @@ export function shopStateBanner(res) {
       </div>
     </div>`;
   if (shop.is_demo) {
-    if (state === 'expired') return banner('danger', html`<b>Your demo has ended.</b> Go live to keep your link and start taking real orders.`, 'Go live');
-    return banner('info', html`<b>Demo shop · ${left > 0 ? `${left + 1} days left` : 'last day today'}.</b> Your customer link works for testing. Go live any time.`, 'Go live');
+    const ends = shop.demo_expires_at ? Date.parse(shop.demo_expires_at) - Date.now() : (left + 1) * 86400000;
+    const h = Math.max(0, Math.floor(ends / 3600000));
+    const remaining = h >= 48 ? `${Math.floor(h / 24)} days left` : h >= 1 ? `${h} hours left` : 'ends soon';
+    if (state === 'expired') return banner('danger', html`<b>Your demo has ended.</b> Register your shop to start taking real orders.`, 'Register your shop', '/register');
+    return banner('info', html`<b>Demo shop · ${remaining}.</b> Sample orders, real features. Like it? Register your own shop.`, 'Register your shop', '/register');
   }
   if (state === 'pending') return banner('info', html`<b>Choose a plan to start.</b> Your order link opens as soon as the payment is done.`);
   if (state === 'expired') return banner('danger', html`<b>Your plan ended on ${formatDate(shop.paid_until)}.</b> Your order link is closed. Renew to switch it back on.`, 'Renew now');

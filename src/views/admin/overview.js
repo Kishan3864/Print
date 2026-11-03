@@ -125,7 +125,7 @@ function paymentsPanel(payments) {
         href: `/admin/shops/${p.shop_id}`,
         lead: html`<span class="adm-item-ic is-ok">${adminIcon('rupee')}</span>`,
         title: p.shop_name,
-        sub: `${planName(p.plan) || p.plan} · ${CYCLES[p.cycle] || p.cycle} · ${p.method === 'manual' ? 'Manual' : 'Razorpay'}`,
+        sub: `${planName(p.plan) || p.plan} · ${CYCLES[p.cycle] || p.cycle} · ${p.method === 'manual' ? 'Manual' : 'PayU'}`,
         side: html`<b class="adm-amount">${formatINR(p.amount_paise / 100)}</b><span class="adm-sub">${timeAgo(p.paid_at || p.created_at)}</span>`,
       })
     ),

@@ -12,15 +12,15 @@ import { publishShop } from '../lib/live.js';
 // Subscriptions: a shop buys a plan for one month or one year. Paying extends
 // shops.paid_until from max(today, current paid_until). When paid_until passes
 // the shop is 'expired' (order link closed, dashboard locked to billing/support).
-// Payments go through Razorpay Payment Links (hosted page, no card data here)
+// Payments go through PayU hosted checkout (no card data here)
 // or are recorded manually by the admin (UPI / cash / bank transfer).
 
 export const CYCLES = { monthly: 'Monthly', yearly: 'Yearly' };
 
 export const DEFAULT_PLANS = [
-  { key: 'starter', name: 'Starter', monthly: 299, yearly: 2990, storageGb: 10, active: true, popular: false },
-  { key: 'pro', name: 'Pro', monthly: 499, yearly: 4990, storageGb: 30, active: true, popular: true },
-  { key: 'business', name: 'Business', monthly: 999, yearly: 9990, storageGb: 100, active: true, popular: false },
+  { key: 'starter', name: 'Starter', monthly: 299, yearly: 3229, storageGb: 10, active: true, popular: false },
+  { key: 'pro', name: 'Pro', monthly: 499, yearly: 5389, storageGb: 30, active: true, popular: true },
+  { key: 'business', name: 'Business', monthly: 999, yearly: 10789, storageGb: 100, active: true, popular: false },
 ];
 export const PLAN_KEYS = DEFAULT_PLANS.map((p) => p.key);
 
@@ -173,7 +173,7 @@ export function markPaid(paymentId, { providerPaymentId = null, amountPaise = nu
   notifyAdmin({
     kind: 'payment',
     title: `Payment ${amount} from ${shop.name}`,
-    body: `${plan?.name || payment.plan} · ${CYCLES[payment.cycle]} · ${payment.method === 'manual' ? 'recorded manually' : 'Razorpay'} · till ${formatDate(end)}${wasDemo ? ' · went live from demo' : ''}`,
+    body: `${plan?.name || payment.plan} · ${CYCLES[payment.cycle]} · ${payment.method === 'manual' ? 'recorded manually' : 'PayU'} · till ${formatDate(end)}${wasDemo ? ' · went live from demo' : ''}`,
     link: `/admin/shops/${shop.id}`,
   });
   if (config.adminEmail && payment.method !== 'manual') {
@@ -184,7 +184,7 @@ export function markPaid(paymentId, { providerPaymentId = null, amountPaise = nu
   return getPayment(payment.id);
 }
 
-/** Admin records a payment received outside Razorpay (UPI, cash, bank). */
+/** Admin records a payment received outside PayU (UPI, cash, bank). */
 export function recordManualPayment(shop, { planKey, cycle, amountRupees, note = '' }) {
   const plan = getPlan(planKey);
   if (!plan || !CYCLES[cycle]) throw new Error('Choose a plan and billing cycle.');
@@ -196,82 +196,55 @@ export function recordManualPayment(shop, { planKey, cycle, amountRupees, note =
   return markPaid(payment.id);
 }
 
-// ---------- Razorpay (Payment Links) ----------
-export const razorpayEnabled = () => config.razorpay.enabled;
+// ---------- PayU (hosted checkout) ----------
+// The shop's browser POSTs a signed form to PayU; PayU POSTs the result back to
+// /pay/payu/return (verified with the reverse hash). No card data touches us.
+export const payuEnabled = () => config.payu.enabled;
+const sha512 = (s) => crypto.createHash('sha512').update(s).digest('hex');
+const payuAmount = (p) => (p.amount_paise / 100).toFixed(2);
 
-async function razorpay(pathname, body) {
-  const auth = Buffer.from(`${config.razorpay.keyId}:${config.razorpay.keySecret}`).toString('base64');
-  const res = await fetch(`https://api.razorpay.com/v1${pathname}`, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error?.description || `Razorpay error ${res.status}`);
-  return data;
-}
-
-/** Creates a payment + Razorpay payment link. Returns the hosted payment page URL. */
-export async function startRazorpayPayment(shop, planKey, cycle) {
-  if (!razorpayEnabled()) throw new Error('Online payment is not switched on yet. Please contact Brighton Solution.');
+/** Creates a PayU payment row for this shop / plan / cycle. */
+export function startPayuPayment(shop, planKey, cycle) {
+  if (!payuEnabled()) throw new Error('Online payment is not switched on yet. Please contact Brighton Solution.');
   const plan = activePlans().find((p) => p.key === planKey);
   if (!plan || !CYCLES[cycle]) throw new Error('Choose a plan and billing cycle.');
-  if (isSampleShop(shop)) throw new Error('The sample demo shop cannot be billed.');
-  const payment = createPaymentRow(shop, plan, cycle, 'razorpay');
-  const phone = waNumber(shop.mobile);
-  const link = await razorpay('/payment_links', {
-    amount: payment.amount_paise,
-    currency: 'INR',
-    accept_partial: false,
-    reference_id: payment.reference,
-    description: `PrintDesk ${plan.name} – ${CYCLES[cycle]}`,
-    customer: { name: shop.owner_name || shop.name, email: shop.email, ...(phone.length >= 10 ? { contact: '+' + phone } : {}) },
-    notify: { sms: false, email: false },
-    reminder_enable: false,
-    notes: { shop_id: String(shop.id), plan: plan.key, cycle },
-    callback_url: `${config.baseUrl}/shop/billing/callback`,
-    callback_method: 'get',
-    expire_by: Math.floor(Date.now() / 1000) + 2 * 24 * 3600,
-  });
-  db.prepare('UPDATE payments SET provider_link_id = ?, provider_link_url = ? WHERE id = ?').run(link.id, link.short_url, payment.id);
-  return link.short_url;
+  if (shop.is_demo) throw new Error('Demo shops cannot be paid for. Register your real shop to go live.');
+  return createPaymentRow(shop, plan, cycle, 'payu');
 }
 
-const hmac = (secret, text) => crypto.createHmac('sha256', secret).update(text).digest('hex');
+/** Fields for the auto-submitted form to PayU. */
+export function payuForm(payment, shop) {
+  const plan = getPlan(payment.plan);
+  const f = {
+    key: config.payu.key,
+    txnid: payment.reference,
+    amount: payuAmount(payment),
+    productinfo: `PrintDesk ${plan?.name || payment.plan} ${CYCLES[payment.cycle]}`,
+    firstname: String(shop.owner_name || shop.name).replace(/[^A-Za-z0-9 .]/g, '').slice(0, 60) || 'Customer',
+    email: shop.email,
+    phone: waNumber(shop.mobile).slice(-10),
+    udf1: String(shop.id),
+    surl: `${config.baseUrl}/pay/payu/return`,
+    furl: `${config.baseUrl}/pay/payu/return`,
+  };
+  f.hash = sha512(`${f.key}|${f.txnid}|${f.amount}|${f.productinfo}|${f.firstname}|${f.email}|${f.udf1}||||||||||${config.payu.salt}`);
+  return { action: config.payu.test ? 'https://test.payu.in/_payment' : 'https://secure.payu.in/_payment', fields: f };
+}
 
-/**
- * Handles the browser redirect back from Razorpay (query params). Returns
- * { payment, paid } for this shop, or throws when the signature is wrong.
- */
-export function handleRazorpayCallback(shop, q) {
-  const linkId = String(q.razorpay_payment_link_id || '');
-  const ref = String(q.razorpay_payment_link_reference_id || '');
-  const status = String(q.razorpay_payment_link_status || '');
-  const payId = String(q.razorpay_payment_id || '');
-  const expected = hmac(config.razorpay.keySecret, `${linkId}|${ref}|${status}|${payId}`);
-  if (!config.razorpay.keySecret || !safeEqual(expected, String(q.razorpay_signature || ''))) throw new Error('We could not verify this payment. If money was taken, contact support – we will fix it.');
-  const payment = db.prepare('SELECT * FROM payments WHERE reference = ? AND provider_link_id = ? AND shop_id = ?').get(ref, linkId, shop.id);
+/** Handles PayU's POST back. Returns the payment row (paid / failed / still created). Throws on a bad hash. */
+export function handlePayuReturn(b) {
+  const s = (k) => String(b[k] ?? '');
+  const payment = db.prepare("SELECT * FROM payments WHERE reference = ? AND method = 'payu'").get(s('txnid'));
   if (!payment) throw new Error('Payment not found.');
-  if (status === 'paid') return { payment: markPaid(payment.id, { providerPaymentId: payId }), paid: true };
-  return { payment, paid: false };
-}
-
-/** Razorpay webhook (payment_link.paid). Verifies the signature over the raw body. */
-export function handleRazorpayWebhook(rawBody, signature) {
-  if (!config.razorpay.webhookSecret || !safeEqual(hmac(config.razorpay.webhookSecret, rawBody), String(signature || ''))) {
-    const err = new Error('Bad signature');
-    err.status = 400;
-    throw err;
+  const reverse = `${config.payu.salt}|${s('status')}||||||${s('udf5')}|${s('udf4')}|${s('udf3')}|${s('udf2')}|${s('udf1')}|${s('email')}|${s('firstname')}|${s('productinfo')}|${s('amount')}|${s('txnid')}|${config.payu.key}`;
+  const extra = b.additionalCharges ? `${s('additionalCharges')}|` : '';
+  if (!config.payu.salt || !safeEqual(sha512(extra + reverse), s('hash').toLowerCase())) throw new Error('We could not verify this payment. If money was taken, contact support – we will fix it.');
+  if (s('status') === 'success') {
+    if (s('amount') !== payuAmount(payment)) throw new Error('Paid amount does not match. Please contact support.');
+    return markPaid(payment.id, { providerPaymentId: s('mihpayid') || null });
   }
-  const event = JSON.parse(rawBody.toString('utf8'));
-  if (event.event !== 'payment_link.paid') return false;
-  const link = event.payload?.payment_link?.entity || {};
-  const pay = event.payload?.payment?.entity || {};
-  const payment = db.prepare('SELECT * FROM payments WHERE reference = ? AND provider_link_id = ?').get(String(link.reference_id || ''), String(link.id || ''));
-  if (!payment) return false;
-  markPaid(payment.id, { providerPaymentId: pay.id || null, amountPaise: pay.amount ?? null });
-  return true;
+  if (s('status') === 'failure') db.prepare("UPDATE payments SET status = 'failed', provider_payment_id = ? WHERE id = ? AND status = 'created'").run(s('mihpayid') || null, payment.id);
+  return getPayment(payment.id);
 }
 
 // ---------- daily reminders ----------

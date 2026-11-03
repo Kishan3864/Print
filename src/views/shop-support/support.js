@@ -150,7 +150,7 @@ function sampleNotice() {
     <div>
       <h2 id="sup-sample-title">Tickets are available in your own shop</h2>
       <p>This is the shared sample shop, so tickets are switched off here. Create your free demo shop in a minute and try support, notifications and your own order link.</p>
-      <a class="btn btn-primary" href="/demo/register">${icon('sparkle')}<span>Create my free demo shop</span></a>
+      <a class="btn btn-primary" href="/register">${icon('sparkle')}<span>Register your shop</span></a>
     </div>
   </section>`;
 }

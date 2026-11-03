@@ -128,7 +128,7 @@ export function registerPage(res, { values = {}, errors = {}, demo = false, choi
     <p class="auth-foot">
       <span class="au-foot-item">Already registered? <a href="/login">Log in</a></span><span class="au-sep" aria-hidden="true"></span><span class="au-foot-item">${demo
         ? html`Ready to go live? <a href="/register">Register your shop</a>`
-        : html`Not ready to pay? <a href="/demo/register">Try a free demo shop</a>`}</span>
+        : html`Not ready to pay? <a href="/demo">Try the live demo</a>`}</span>
     </p>
   </section>`;
 }

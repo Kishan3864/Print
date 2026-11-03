@@ -434,6 +434,23 @@ export function resetDemo() {
   return true;
 }
 
+/** Fills a fresh (empty) demo shop with the same sample orders as the shared demo. */
+export function seedSampleOrders(shop) {
+  const dir = path.join(paths.uploads, String(shop.id));
+  fs.mkdirSync(dir, { recursive: true });
+  const store = (name, bytes) => {
+    const filename = `${randomHex(16)}.${extOf(name)}`;
+    fs.writeFileSync(path.join(dir, filename), bytes);
+    return { originalname: name, filename, size: bytes.length };
+  };
+  const plans = samplePlan(Date.now(), Date.parse(startOfTodayIso())).map((p, i) => ({
+    ...p,
+    files: p.files.map((f) => store(f.name, customerFileBytes(f, 1001 + i))),
+    steps: p.steps.map((s) => (s.proof ? { ...s, file: store(s.proof.name, proofBytes(s.proof, 1001 + i)) } : s)),
+  }));
+  db.transaction(() => plans.forEach((plan) => seedOrder(shop, plan)))();
+}
+
 // ---------- personal demo shops ----------
 /**
  * Deletes personal demo shops whose demo ended more than config.demo.keepDays

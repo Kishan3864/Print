@@ -181,6 +181,9 @@ router.post('/register', registerLimiter, (req, res) => {
 });
 
 // ---------- free personal demo shop (no payment, no approval) ----------
+// Personal demos now come only from admin-made links (/try/<token>).
+router.all('/demo/register', (req, res) => res.redirect(303, '/demo'));
+
 router.get('/demo/register', (req, res) => {
   if (ownDemoShop(req)) return res.redirect('/shop');
   showRegister(req, res, { demo: true });

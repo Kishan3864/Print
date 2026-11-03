@@ -10,6 +10,7 @@ export const ADMIN_NAV = [
   { key: 'shops', href: '/admin/shops', label: 'Shops', icon: 'store' },
   { key: 'payments', href: '/admin/payments', label: 'Payments', icon: 'rupee', admin: true },
   { key: 'tickets', href: '/admin/tickets', label: 'Support', icon: 'chat', admin: true },
+  { key: 'demos', href: '/admin/demo-links', label: 'Demo links', icon: 'link' },
   { key: 'plans', href: '/admin/plans', label: 'Plans', icon: 'tag', admin: true },
 ];
 

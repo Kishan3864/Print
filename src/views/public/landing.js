@@ -207,9 +207,9 @@ function faq() {
     ['Can I use my own logo and colour?', html`Yes. Your order page shows your shop name, logo and brand colour.`],
     ['Does it work on mobile?', html`Yes. Customers order from any phone, and you can run the whole counter from yours. PrintDesk also installs like an app, straight from the browser.`],
     ['How do I get started?', html`<a href="/register">Register your shop</a> with a short form, choose a plan and pay online. Your order link opens right away – share it and start taking orders.`],
-    ['How do I pay?', html`Online through Razorpay with UPI, debit or credit card, or net banking. Pay monthly or yearly and renew anytime from your dashboard. See the <a href="/#pricing">plans and prices</a>.`],
+    ['How do I pay?', html`Online through PayU with UPI, debit or credit card, or net banking. Pay monthly or yearly and renew anytime from your dashboard. See the <a href="/#pricing">plans and prices</a>.`],
     ['What happens when my plan ends?', html`Your order link stops taking new orders and your dashboard asks you to renew. Your orders and settings are kept – renew and the link opens again straight away. We remind you before the end date.`],
-    ['Can I try before paying?', html`Yes. <a href="/demo/register">Create a free demo shop</a> – no payment and no approval. It runs for ${config.demo.trialDays} days with your own shop name and link. Go live anytime by choosing a plan.`],
+    ['Can I try before paying?', html`Yes. <a href="/demo">Try the live demo</a> – no payment and no approval. It runs for ${config.demo.trialDays} days with your own shop name and link. Go live anytime by choosing a plan.`],
   ];
   return html`<section class="lp-section lp-alt" id="faq" aria-labelledby="faq-title">
     <div class="container">

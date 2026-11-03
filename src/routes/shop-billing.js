@@ -7,28 +7,26 @@ import {
   activePlans,
   getPlan,
   getShopPayment,
-  handleRazorpayCallback,
   isSampleShop,
   priceRupees,
-  razorpayEnabled,
+  payuEnabled,
+  payuForm,
   shopPayments,
-  startRazorpayPayment,
+  startPayuPayment,
 } from '../services/billing.js';
 import { getShopById } from '../services/shops.js';
 import { messagePage, render } from '../views/layout.js';
-import { billingView, checkoutView } from '../views/shop-billing/billing.js';
+import { billingView } from '../views/shop-billing/billing.js';
+import { icon } from '../views/components.js';
 import { receiptView } from '../views/shop-billing/receipt.js';
 
-// Shop area: "Plan & billing" – plan picker, Razorpay checkout + callback, receipts.
+// Shop area: "Plan & billing" – plan picker, PayU checkout, waiting screen, receipts.
 // Mounted under the /shop gate (always open, also for pending/expired shops).
 
 const router = Router();
 
 const BILLING = '/shop/billing';
-// An unpaid payment link is reused for the same plan/cycle/price for this long (no duplicate links).
-const REUSE_LINK_MS = 60 * 60 * 1000;
 
-const isHttpsUrl = (v) => typeof v === 'string' && /^https:\/\/[^\s"'<>]+$/.test(v);
 
 router.get('/billing', (req, res) => {
   const shop = req.shop;
@@ -45,35 +43,20 @@ router.get('/billing', (req, res) => {
       sample: isSampleShop(shop),
       plans: activePlans(),
       payments: shopPayments(shop.id).filter((p) => p.status === 'paid'),
-      razorpayOn: razorpayEnabled(),
+      razorpayOn: payuEnabled(),
       choice,
     })
   );
 });
 
-/** A recent unpaid Razorpay link of this shop for the same plan, cycle and current price. */
-function reusableLink(shop, plan, cycle) {
-  const amount = Math.round(priceRupees(plan, cycle) * 100);
-  return shopPayments(shop.id).find(
-    (p) =>
-      p.status === 'created' &&
-      p.method === 'razorpay' &&
-      p.plan === plan.key &&
-      p.cycle === cycle &&
-      p.amount_paise === amount &&
-      isHttpsUrl(p.provider_link_url) &&
-      Date.now() - Date.parse(p.created_at) < REUSE_LINK_MS
-  );
-}
-
-router.post('/billing/pay', actionLimiter, async (req, res) => {
+router.post('/billing/pay', actionLimiter, (req, res) => {
   const shop = req.shop;
   const planKey = typeof req.body.plan === 'string' ? req.body.plan : '';
   const cycle = typeof req.body.cycle === 'string' && Object.hasOwn(CYCLES, req.body.cycle) ? req.body.cycle : '';
   const plan = activePlans().find((p) => p.key === planKey);
 
-  if (isSampleShop(shop)) {
-    flash(req, 'info', 'Payments are switched off in the shared demo shop. Create your own demo shop or register to go live.');
+  if (shop.is_demo) {
+    flash(req, 'info', 'This is a demo shop – it cannot be paid for. Register your real shop to go live.');
     return res.redirect(303, BILLING);
   }
   if (req.shopState === 'paused') {
@@ -84,62 +67,79 @@ router.post('/billing/pay', actionLimiter, async (req, res) => {
     flash(req, 'error', 'Please choose a plan and Monthly or Yearly.');
     return res.redirect(303, BILLING);
   }
-  if (!razorpayEnabled()) {
+  if (!payuEnabled()) {
     flash(req, 'info', 'Online payment is being set up. Please pay by UPI to Brighton Solution and raise a ticket with the screenshot.');
     return res.redirect(303, BILLING);
   }
-
   try {
-    let payment = reusableLink(shop, plan, cycle);
-    if (!payment) {
-      const url = await startRazorpayPayment(shop, plan.key, cycle);
-      payment = shopPayments(shop.id).find((p) => p.status === 'created' && p.provider_link_url === url);
-      if (!payment || !isHttpsUrl(url)) throw new Error('Could not open the payment page. Please try again.');
-    }
-    // Hand off via a same-origin page: CSP form-action blocks a form POST that redirects off-site.
+    const payment = startPayuPayment(shop, plan.key, cycle);
     res.redirect(303, `${BILLING}/checkout/${payment.id}`);
   } catch (err) {
-    console.error('[billing] start payment failed:', shop.id, err.message);
     flash(req, 'error', err.message || 'Could not start the payment. Please try again in a minute.');
     res.redirect(303, BILLING);
   }
 });
 
+// Signed form that the browser posts to PayU (auto-submitted by /js/payu.js).
 router.get('/billing/checkout/:id(\\d+)', (req, res) => {
   const payment = getShopPayment(req.shop.id, req.params.id);
-  if (payment && payment.status === 'paid') {
-    flash(req, 'success', `This payment is already done – your plan is active till ${formatDate(payment.period_end)}.`);
-    return res.redirect(303, BILLING);
-  }
-  if (!payment || payment.status !== 'created' || payment.method !== 'razorpay' || !isHttpsUrl(payment.provider_link_url)) {
-    flash(req, 'info', 'That payment link is no longer available. Please choose your plan again.');
-    return res.redirect(303, BILLING);
-  }
+  if (!payment || payment.status !== 'created' || payment.method !== 'payu') return res.redirect(303, BILLING);
+  const plan = getPlan(payment.plan);
+  const { action, fields } = payuForm(payment, req.shop);
   res.setHeader('Referrer-Policy', 'no-referrer');
-  render(res, checkoutView(res, { payment, plan: getPlan(payment.plan) }));
+  render(res, {
+    title: 'Secure payment',
+    variant: 'shop',
+    active: 'billing',
+    scripts: ['/js/payu.js'],
+    body: html`<section class="container-narrow wait-page">
+      <div class="card card-pad wait-card">
+        <div class="spinner wait-spinner" aria-hidden="true"></div>
+        <h1>Opening secure payment…</h1>
+        <p class="lead">${plan?.name || payment.plan} · ${CYCLES[payment.cycle]} · ₹${(payment.amount_paise / 100).toLocaleString('en-IN')}</p>
+        <form method="post" action="${action}" data-payu-autosubmit data-no-lock>
+          ${Object.entries(fields).map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}
+          <button class="btn btn-primary btn-lg" type="submit">${icon('shield')}<span>Continue to PayU</span></button>
+        </form>
+        <p class="hint">UPI, cards and net banking on PayU's secure page.</p>
+      </div>
+    </section>`,
+  });
 });
 
-// Razorpay sends the customer back here (GET with signed query parameters).
-router.get('/billing/callback', (req, res) => {
-  if (!req.query.razorpay_payment_link_id) return res.redirect(303, BILLING);
-  const wasDemo = Boolean(req.shop.is_demo);
-  const wasLive = !wasDemo && req.shopState === 'active';
-  try {
-    const { payment, paid } = handleRazorpayCallback(req.shop, req.query);
-    if (!paid) {
-      flash(req, 'info', 'Payment not completed. You have not been charged – you can try again any time.');
-      return res.redirect(303, BILLING);
-    }
+// After PayU: wait here until the payment is confirmed, then go straight to the dashboard.
+// live.js re-fetches this page when the shop changes; the redirect then takes over.
+router.get('/billing/waiting/:id(\\d+)', (req, res) => {
+  const payment = getShopPayment(req.shop.id, req.params.id);
+  if (!payment) return res.redirect(303, BILLING);
+  if (payment.status === 'paid') {
     const shop = getShopById(req.shop.id);
-    const till = formatDate(shop?.paid_until || payment.period_end);
-    if (wasDemo) flash(req, 'success', `Your shop is live! Your plan is active till ${till}. Share your new link with customers.`);
-    else flash(req, 'success', `Payment received – your shop is active till ${till}.`);
-    res.redirect(303, wasLive ? BILLING : wasDemo ? '/shop/link' : '/shop');
-  } catch (err) {
-    console.error('[billing] callback failed:', req.shop.id, err.message);
-    flash(req, 'error', err.message || 'We could not confirm this payment. If money was taken, contact support – we will fix it.');
-    res.redirect(303, BILLING);
+    flash(req, 'success', `Payment received – your shop is active till ${formatDate(shop?.paid_until || payment.period_end)}.`);
+    return res.redirect(303, '/shop');
   }
+  if (payment.status === 'failed' || payment.status === 'cancelled') {
+    flash(req, 'error', 'The payment did not go through. You have not been charged – please try again.');
+    return res.redirect(303, BILLING);
+  }
+  render(res, {
+    title: 'Activating your shop',
+    variant: 'shop',
+    active: 'billing',
+    scripts: ['/js/payu.js'],
+    body: html`<section class="container-narrow wait-page" data-wait-refresh>
+      <div class="card card-pad wait-card">
+        <div class="spinner wait-spinner" aria-hidden="true"></div>
+        <h1>Activating your shop…</h1>
+        <p class="lead">We are confirming your payment with the bank. This usually takes a few seconds – your dashboard opens by itself.</p>
+        <ol class="wait-steps">
+          <li class="is-done">${icon('check')}<span>Payment sent</span></li>
+          <li class="is-current">${icon('clock')}<span>Confirming with the bank</span></li>
+          <li>${icon('store')}<span>Your shop goes live</span></li>
+        </ol>
+        <p class="hint">Taking long? You can close this page – we will notify you. Questions: <a href="/shop/support?new=billing">contact support</a>.</p>
+      </div>
+    </section>`,
+  });
 });
 
 router.get('/billing/receipt/:id(\\d+)', (req, res) => {
