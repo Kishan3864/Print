@@ -142,6 +142,7 @@ function checkCard(res, shop, order, proof, olderProofs, base) {
   const href = `${base}/f/${proof.id}`;
   return html`<section class="cust-card cust-proof is-waiting" id="proof" aria-labelledby="cust-proof-title">
     <div class="cust-proof-head">
+      <p class="cust-proof-kicker">Order <b class="order-no">P-${order.order_no}</b> · waiting for your OK</p>
       <h2 id="cust-proof-title">Check your design</h2>
       <p>Check spelling, phone numbers, colours and size.</p>
     </div>
@@ -293,8 +294,9 @@ export function trackPage(res, { shop, order, files, proof, isNew = false, owner
   const body = html`<div class="cust-wrap cust-page cust-narrow cust-track">
     ${owner ? ownerNote('You are viewing the customer’s tracking page.', `/shop/orders/${no}`, 'Open in dashboard') : ''}
     ${isNew ? placedCard(shop, order) : ''}
+    ${waiting ? checkCard(res, shop, order, proof, olderProofs, base) : ''}
     ${statusCard(shop, order, proof)}
-    ${waiting ? checkCard(res, shop, order, proof, olderProofs, base) : proof ? previewFold(shop, order, proof, olderProofs, base) : ''}
+    ${!waiting && proof ? previewFold(shop, order, proof, olderProofs, base) : ''}
     ${st === 'ready' ? pickupCard(shop, order) : ''}
     ${details}
     ${filesFold}

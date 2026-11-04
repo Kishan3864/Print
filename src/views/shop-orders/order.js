@@ -301,11 +301,11 @@ export function orderView(d) {
     <div class="sh-track">
       <p class="sh-label">${icon('link')}<span>Customer's order page</span></p>
       <p class="hint">The customer follows the order and taps OK here. Only people with this link can open it.</p>
-      <div class="copy-field">
-        <label class="sr-only" for="track-url">Customer's order page link</label>
-        <input id="track-url" type="text" readonly value="${d.trackUrl}">
-        <button class="btn btn-secondary btn-icon" type="button" data-copy-target="#track-url" data-copy-msg="Link copied" aria-label="Copy link">${icon('copy')}</button>
-        <a class="btn btn-secondary btn-icon" href="${d.trackUrl}" target="_blank" rel="noopener" aria-label="Open as the customer sees it" title="Open as the customer sees it">${icon('eye')}</a>
+      <label class="sr-only" for="track-url">Customer's order page link</label>
+      <input id="track-url" type="text" readonly value="${d.trackUrl}">
+      <div class="sh-track-btns">
+        <button class="btn btn-secondary btn-sm" type="button" data-copy-target="#track-url" data-copy-msg="Link copied">${icon('copy')}<span>Copy link</span></button>
+        <a class="btn btn-secondary btn-sm" href="${d.trackUrl}" target="_blank" rel="noopener" title="Open as the customer sees it">${icon('eye')}<span>Open</span></a>
       </div>
     </div>
   </section>`;

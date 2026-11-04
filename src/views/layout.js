@@ -77,7 +77,7 @@ export function page(res, opts) {
 <title>${fullTitle}</title>
 <meta name="description" content="${desc}">
 ${robots ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="${variant === 'shop' || variant === 'admin' ? '#0e1116' : '#ffffff'}">
 <meta name="color-scheme" content="only light">
 ${variant === 'customer'
   ? ''

@@ -6,11 +6,13 @@ import { getShopById, shopState } from '../services/shops.js';
 import { orderFormUrl } from '../services/notify.js';
 import { CYCLES, daysLeft, getPlan } from '../services/billing.js';
 import { getTicket, listAllTickets, listShopTickets, markTicketReadByAdmin, replyToTicket, setTicketStatus, ticketMessages, TICKET_STATUS_LABEL } from '../services/support.js';
-import { broadcastToShops, listAdminNotifications, markAdminRead, notifyShop, unreadAdminCount } from '../services/notifications.js';
+import { listAdminNotifications, markAdminRead, unreadAdminCount } from '../services/notifications.js';
+import { AUDIENCES, audienceCounts, listAnnouncements, pickableShops, resolveRecipients, sendAnnouncement } from '../services/announcements.js';
 import { messagePage, render } from '../views/layout.js';
 import { INBOX_FILTERS, REPLY_MAX, adminTicketView, inboxView } from '../views/admin-support/tickets.js';
 import { adminNotificationsView } from '../views/admin-support/notifications.js';
-import { NOTIFY_LIMITS } from '../views/admin-support/forms.js';
+import { announcementPreviewView, announcementsView } from '../views/admin-support/announcements.js';
+import { NOTIFY_LIMITS, newNonce } from '../views/admin-support/forms.js';
 
 // Super admin: support inbox, ticket replies, notifications and announcements.
 // Mounted at /admin behind requireAdmin. Links are written as /admin/… (works on the admin host too).
@@ -20,8 +22,6 @@ const router = Router();
 const ID = ':id(\\d{1,10})';
 const SHOP_LINK = /^\/shop(?:\/[a-z0-9\-/]*)?$/;
 
-// Same audience as broadcastToShops(): live (non-demo) shops that are active or paused.
-const qRecipients = db.prepare("SELECT COUNT(*) AS n FROM shops WHERE is_demo = 0 AND status IN ('active','paused')");
 // Opening a ticket also clears the admin bell rows that point to it.
 const qReadTicketNotes = db.prepare("UPDATE notifications SET read_at = ? WHERE audience = 'admin' AND link = ? AND read_at IS NULL");
 
@@ -125,7 +125,8 @@ router.get('/notifications', (req, res) => {
   const unread = items.filter((n) => !n.read_at).length;
   // New rows are highlighted on this view, then count as read (the bell clears now).
   res.locals.adminUnread = 0;
-  render(res, adminNotificationsView(res, { items, unread, recipients: qRecipients.get().n }));
+  const last = listAnnouncements(1)[0] || null;
+  render(res, adminNotificationsView(res, { items, unread, reachAll: audienceCounts().all, last }));
   markAdminRead();
 });
 
@@ -134,33 +135,82 @@ router.post('/notifications/read', (req, res) => {
   res.redirect(303, '/admin/notifications');
 });
 
-// ---------- send a notification: one shop or every live shop ----------
+// ---------- announcements: write → preview → send ----------
+const NONCE = /^[a-f0-9]{16,64}$/;
+
+/** Reads and checks the compose fields. Returns { values, errors } (errors keyed by field). */
+function readAnnouncement(body) {
+  const values = {
+    audience: AUDIENCES.some((a) => a.key === body.audience) ? body.audience : '',
+    shop_id: /^\d{1,10}$/.test(String(body.shop_id || '').trim()) ? String(body.shop_id).trim() : '',
+    title: cleanLine(body.title, NOTIFY_LIMITS.titleMax + 1),
+    body: multiline(body.body, NOTIFY_LIMITS.bodyMax),
+    link: cleanLine(body.link, 200),
+    important: body.important === '1' ? '1' : '',
+    nonce: NONCE.test(String(body.nonce || '')) ? String(body.nonce) : newNonce(),
+  };
+  const errors = {};
+  if (!values.audience) errors.audience = 'Choose who gets it.';
+  else if (values.audience === 'shop' && !values.shop_id) errors.shop_id = 'Pick the shop.';
+  if (values.title.length < NOTIFY_LIMITS.titleMin) errors.title = 'Write a title (at least 3 characters).';
+  else if (values.title.length > NOTIFY_LIMITS.titleMax) errors.title = `Keep the title to ${NOTIFY_LIMITS.titleMax} characters or fewer.`;
+  if (values.body.length > NOTIFY_LIMITS.bodyMax) errors.body = `Keep the message to ${NOTIFY_LIMITS.bodyMax} characters or fewer.`;
+  if (values.link && (!SHOP_LINK.test(values.link) || values.link.includes('//'))) errors.link = 'The button must open a page in the shop app.';
+  return { values, errors };
+}
+
+function renderCompose(res, { values, errors = {}, status = 200 }) {
+  render(res, announcementsView(res, { values, errors, counts: audienceCounts(), shops: pickableShops(), history: listAnnouncements(50) }), status);
+}
+
+const blankAnnouncement = () => ({ audience: 'all', shop_id: '', title: '', body: '', link: '', important: '', nonce: newNonce() });
+
+router.get('/announcements', (req, res) => {
+  const values = blankAnnouncement();
+  // ?shop=12 (from a shop page) starts a message to that one shop.
+  if (/^\d{1,10}$/.test(String(req.query.shop || ''))) Object.assign(values, { audience: 'shop', shop_id: String(req.query.shop) });
+  renderCompose(res, { values });
+});
+
+router.post('/announcements/edit', (req, res) => renderCompose(res, { values: readAnnouncement(req.body).values }));
+
+router.post('/announcements/preview', (req, res) => {
+  const { values, errors } = readAnnouncement(req.body);
+  if (Object.keys(errors).length) return renderCompose(res, { values, errors, status: 422 });
+  const r = resolveRecipients(values.audience, values.shop_id);
+  if (r.error) return renderCompose(res, { values, errors: { shop_id: r.error }, status: 422 });
+  render(res, announcementPreviewView(res, { values, recipients: r.shops, label: r.label }));
+});
+
+router.post('/announcements/send', (req, res) => {
+  const { values, errors } = readAnnouncement(req.body);
+  if (Object.keys(errors).length) return renderCompose(res, { values, errors, status: 422 });
+  const out = sendAnnouncement({ ...values, shopId: values.shop_id, important: values.important === '1' });
+  if (out.error) return renderCompose(res, { values, errors: { [values.audience === 'shop' ? 'shop_id' : 'audience']: out.error }, status: 422 });
+  if (out.duplicate) flash(req, 'info', 'This announcement was already sent – it was not sent twice.');
+  else flash(req, 'success', `Sent to ${out.reached} shop${out.reached === 1 ? '' : 's'}. They see it in Alerts now${values.important ? ', with a banner on every page' : ''}.`);
+  res.redirect(303, '/admin/announcements#sent');
+});
+
+// ---------- message to one shop (form on the admin shop page) ----------
 router.post('/notify', (req, res) => {
   const target = typeof req.body.shop_id === 'string' ? req.body.shop_id.trim() : '';
-  const shop = target !== 'all' && /^\d{1,10}$/.test(target) ? getShopById(Number(target)) : null;
-  if (target !== 'all' && !shop) {
+  const shop = /^\d{1,10}$/.test(target) ? getShopById(Number(target)) : null;
+  if (!shop) {
     flash(req, 'error', 'That shop was not found. Nothing was sent.');
-    return res.redirect(303, '/admin/notifications');
+    return res.redirect(303, '/admin/announcements');
   }
-  const back = shop ? `/admin/shops/${shop.id}` : '/admin/notifications';
-
-  const title = cleanLine(req.body.title, NOTIFY_LIMITS.titleMax + 1);
-  const body = multiline(req.body.body, NOTIFY_LIMITS.bodyMax);
-  const link = cleanLine(req.body.link, 200);
-  let error = '';
-  if (title.length < NOTIFY_LIMITS.titleMin) error = 'Write a title (at least 3 characters).';
-  else if (title.length > NOTIFY_LIMITS.titleMax) error = `Keep the title to ${NOTIFY_LIMITS.titleMax} characters or fewer.`;
-  else if (body.length > NOTIFY_LIMITS.bodyMax) error = `Keep the message to ${NOTIFY_LIMITS.bodyMax} characters or fewer.`;
-  else if (link && (!SHOP_LINK.test(link) || link.includes('//'))) error = 'The link must be a page in the shop area (starting with /shop).';
+  const back = `/admin/shops/${shop.id}`;
+  const { values, errors } = readAnnouncement({ ...req.body, audience: 'shop', shop_id: String(shop.id) });
+  const error = Object.values(errors)[0];
   if (error) {
     flash(req, 'error', `${error} Nothing was sent.`);
     return res.redirect(303, back);
   }
-
-  const kind = req.body.important === '1' ? 'warn' : 'announcement';
-  const sent = shop ? (notifyShop(shop.id, { kind, title, body, link }), 1) : broadcastToShops({ kind, title, body, link });
-  if (sent) flash(req, 'success', `Sent to ${sent} shop${sent === 1 ? '' : 's'}.`);
-  else flash(req, 'info', 'There are no live shops yet, so nothing was sent.');
+  const out = sendAnnouncement({ ...values, shopId: shop.id, important: values.important === '1' });
+  if (out.duplicate) flash(req, 'info', 'This message was already sent – it was not sent twice.');
+  else if (out.error) flash(req, 'error', out.error);
+  else flash(req, 'success', `Sent to ${shop.name}. It shows in their Alerts${values.important ? ' and as a banner' : ''}.`);
   res.redirect(303, back);
 });
 

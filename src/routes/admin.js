@@ -27,7 +27,7 @@ import { orderFormUrl, sendMail } from '../services/notify.js';
 import { messagePage, render } from '../views/layout.js';
 import { loginView } from '../views/admin/login.js';
 import { overviewView } from '../views/admin/overview.js';
-import { shopsView } from '../views/admin/shops.js';
+import { shopsCsv, shopsView } from '../views/admin/shops.js';
 import { shopView } from '../views/admin/shop.js';
 import {
   DEMO_EXTEND,
@@ -40,6 +40,9 @@ import {
   extendBase,
   planName,
   shopFilter,
+  sortDir,
+  sortKey,
+  sortShops,
   validDate,
 } from '../views/admin/common.js';
 
@@ -198,6 +201,7 @@ router.get('/', (req, res) => {
     title: 'Overview · Admin',
     variant: 'admin',
     active: 'overview',
+    scripts: ['/js/admin.js'],
     body: overviewView(res, {
       rev: revenueStats(),
       overview: adminOverview(),
@@ -213,22 +217,38 @@ router.get('/', (req, res) => {
 });
 
 // ---------- all shops ----------
-router.get('/shops', (req, res) => {
+/** The /admin/shops list for the current query: filter chip, search and sort. */
+function shopList(req) {
   const q = typeof req.query.q === 'string' ? cleanLine(req.query.q, 80) : '';
   const status = typeof req.query.status === 'string' && SHOP_FILTERS.some((f) => f.key === req.query.status) ? req.query.status : '';
+  const sort = sortKey(req.query.sort);
+  const dir = sort ? sortDir(req.query.dir, sort) : '';
   const today = ymd();
   const all = listShopsForAdmin({ q });
   const counts = Object.fromEntries(SHOP_FILTERS.map((f) => [f.key, all.filter((s) => f.test(s, today)).length]));
   const filter = shopFilter(status);
-  const shops = all.filter((s) => filter.test(s, today));
-  if (status === 'expiring') shops.sort((a, b) => a.paid_until.localeCompare(b.paid_until));
-  if (status === 'expired') shops.sort((a, b) => String(b.paid_until || '').localeCompare(String(a.paid_until || '')));
+  let shops = all.filter((s) => filter.test(s, today));
+  if (sort) shops = sortShops(shops, sort, dir, today);
+  else if (status === 'expiring') shops.sort((a, b) => a.paid_until.localeCompare(b.paid_until));
+  else if (status === 'expired') shops.sort((a, b) => String(b.paid_until || '').localeCompare(String(a.paid_until || '')));
+  return { shops, counts, q, status, sort, dir, today };
+}
+
+router.get('/shops', (req, res) => {
   render(res, {
     title: 'Shops · Admin',
     variant: 'admin',
     active: 'shops',
-    body: shopsView(res, { shops, counts, q, status, today }),
+    scripts: ['/js/admin.js'],
+    body: shopsView(res, shopList(req)),
   });
+});
+
+router.get('/shops.csv', (req, res) => {
+  const { shops, today } = shopList(req);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="brighton-print-shops-${today}.csv"`);
+  res.send(shopsCsv(shops, today));
 });
 
 // ---------- one shop ----------
@@ -240,7 +260,7 @@ router.get(SHOP, loadShop, (req, res) => {
     variant: 'admin',
     active: 'shops',
     // Enhancements for the embedded payment / message forms.
-    scripts: ['/js/billing.js', '/js/support.js'],
+    scripts: ['/js/billing.js', '/js/support.js', '/js/admin.js'],
     body: shopView(res, {
       shop,
       state: shopState(shop),

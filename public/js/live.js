@@ -53,6 +53,7 @@
         swap('main', doc);
         swap('header', doc);
         swap('.tabbar', doc);
+        swap('[data-annc]', doc);
         var csrf = doc.body && doc.body.getAttribute('data-csrf');
         if (csrf) body.setAttribute('data-csrf', csrf);
         var details = document.querySelectorAll('main details');

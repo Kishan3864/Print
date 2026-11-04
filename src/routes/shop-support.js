@@ -16,6 +16,8 @@ import {
   ticketMessages,
 } from '../services/support.js';
 import { listShopNotifications, markShopRead, unreadShopCount } from '../services/notifications.js';
+import { dismissNotification } from '../services/announcements.js';
+import { safeLocalLink } from '../views/shop-support/common.js';
 import { messagePage, render } from '../views/layout.js';
 import { LIMITS, notificationsView, supportView, ticketView } from '../views/shop-support/support.js';
 
@@ -144,6 +146,15 @@ router.post('/notifications/read', (req, res) => {
   markShopRead(req.shop.id);
   const next = safeNext(req.body.next, '/shop/notifications');
   res.redirect(303, /^\/shop(?:[/?#]|$)/.test(next) ? next : '/shop/notifications');
+});
+
+// Banner buttons on an important announcement: "Got it" (stay on this page) or "Open" (go to its link).
+router.post(`/notifications/${ID}/dismiss`, (req, res) => {
+  const row = dismissNotification(req.shop.id, req.params.id);
+  const link = row && req.body.go === 'link' ? safeLocalLink(row.link) : '';
+  const next = safeNext(req.body.next, '/shop');
+  const inShop = (p) => /^\/shop(?:[/?#]|$)/.test(p);
+  res.redirect(303, link && inShop(link) ? link : inShop(next) ? next : '/shop');
 });
 
 export default router;

@@ -46,7 +46,7 @@ export const isToday = (iso) => ymd(new Date(iso)) === ymd();
 export function letterAvatar(name, color, size = 36) {
   const bg = isHexColor(color) ? color : '#1a5d40';
   const letter = (Array.from(String(name || '').trim())[0] || '?').toUpperCase();
-  return html`<span class="sup-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" width="${size}" height="${size}" focusable="false"><rect width="40" height="40" rx="20" fill="${bg}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="800" fill="${inkFor(bg)}">${letter}</text></svg></span>`;
+  return html`<span class="sup-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" width="${size}" height="${size}" focusable="false"><rect width="40" height="40" rx="3" fill="${bg}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="middle" font-size="17" font-weight="800" fill="${inkFor(bg)}">${letter}</text></svg></span>`;
 }
 
 const brightonAvatar = () => html`<span class="sup-avatar sup-avatar-brand" aria-hidden="true">${logoMark(36)}</span>`;

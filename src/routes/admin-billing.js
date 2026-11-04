@@ -30,6 +30,7 @@ router.get('/payments', (req, res) => {
     title: 'Payments · Admin',
     variant: 'admin',
     active: 'payments',
+    scripts: ['/js/admin.js'],
     body: paymentsView({ stats: revenueStats(), payments: listPayments({ status: filter === 'all' ? '' : filter }), filter, counts }),
   });
 });

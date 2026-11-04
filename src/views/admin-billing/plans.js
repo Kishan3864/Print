@@ -30,6 +30,7 @@ function planEditor(p, errors) {
       <h2 class="adm-plan-name">${p.name || p.key}<small>${p.key}</small></h2>
       <label class="adm-switch"><input type="checkbox" name="active_${p.key}" value="1"${p.active ? raw(' checked') : ''}><span>Shown to shops</span></label>
     </div>
+    <div class="adm-plan-body">
     <div class="field${e.name ? ' has-error' : ''}">
       <label for="${id('name')}">Plan name</label>
       <input id="${id('name')}" name="name_${p.key}" type="text" maxlength="30" required autocomplete="off" value="${p.name}"${describedBy(id('name'), e.name)}>
@@ -41,7 +42,8 @@ function planEditor(p, errors) {
     </div>
     <p class="adm-plan-save">${saving ? html`${icon('check')}<span>Yearly saves ${formatINR(saving.save)} · shown as “${savingLabel(saving)}”</span>` : html`${icon('info')}<span>Yearly is not cheaper than 12 × monthly – no saving is shown.</span>`}</p>
     ${numberField({ id: id('storage'), name: `storage_${p.key}`, label: 'File storage', value: p.storageGb, error: e.storageGb, suffix: 'GB' })}
-    <label class="adm-radio"><input type="radio" name="popular" value="${p.key}"${p.popular ? raw(' checked') : ''}><span>Mark as “Most popular”</span></label>
+    </div>
+    <div class="adm-plan-pop"><label class="adm-radio"><input type="radio" name="popular" value="${p.key}"${p.popular ? raw(' checked') : ''}><span>Mark as “Most popular”</span></label></div>
   </fieldset>`;
 }
 

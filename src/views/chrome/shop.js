@@ -5,6 +5,7 @@ import { shopState } from '../../services/shops.js';
 import { daysLeft } from '../../services/billing.js';
 import { orderFormUrl } from '../../services/notify.js';
 import { icon } from '../components.js';
+import { announcementBanner } from '../announce.js';
 
 // Shop owner app chrome: top bar (desktop nav), bottom tab bar (mobile), plan banner.
 // Nav keys for render({active}): orders | link | notifications | support | settings (billing counts as settings).
@@ -112,8 +113,13 @@ export function shopTabbar(res, active) {
   </nav>`;
 }
 
-/** Plan / demo status banner shown on every shop page (only when something needs doing). */
+/** Banners under the header: plan / demo status, then an unread important announcement from us. */
 export function shopStateBanner(res) {
+  return html`${planBanner(res)}${announcementBanner(res)}`;
+}
+
+/** Plan / demo status banner shown on every shop page (only when something needs doing). */
+function planBanner(res) {
   const shop = res.locals.shop;
   if (!shop || (shop.is_demo && shop.slug === config.demo.slug)) return '';
   const state = shopState(shop);

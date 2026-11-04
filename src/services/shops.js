@@ -151,7 +151,7 @@ export function listShopsForAdmin({ q = '', status = '' } = {}) {
     )
     .all({ today: startOfTodayIso() });
   const needle = String(q || '').trim().toLowerCase();
-  const nd = needle.replace(/D/g, '');
+  const nd = needle.replace(/\D/g, '');
   return rows
     .map((s) => ({ ...s, state: shopState(s) }))
     .filter((s) => !status || s.state === status)
@@ -159,7 +159,7 @@ export function listShopsForAdmin({ q = '', status = '' } = {}) {
       (s) =>
         !needle ||
         [s.name, s.slug, s.email, s.mobile, s.city, s.owner_name].some((v) => String(v).toLowerCase().includes(needle)) ||
-        (nd.length >= 3 && String(s.mobile).replace(/D/g, '').includes(nd.length > 10 ? nd.slice(-10) : nd))
+        (nd.length >= 3 && String(s.mobile).replace(/\D/g, '').includes(nd.length > 10 ? nd.slice(-10) : nd))
     );
 }
 

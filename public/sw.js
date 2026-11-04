@@ -1,7 +1,7 @@
 /* Brighton Print service worker: offline page + cached static assets.
    Pages are always fetched from the network; uploads, downloads, APIs and
    admin pages are never touched. Bump VERSION to drop old caches. */
-const VERSION = 'v5';
+const VERSION = 'v6';
 const STATIC_CACHE = 'pd-static-' + VERSION;
 const PAGES_CACHE = 'pd-pages-' + VERSION;
 const OFFLINE_URL = '/offline.html';

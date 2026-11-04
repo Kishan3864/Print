@@ -49,7 +49,7 @@ export function icon(name, cls = '') {
 /** Brighton Print mark: printer with a fresh sheet on an indigo tile. */
 export function logoMark(size = 32) {
   return raw(
-    `<svg class="logo-mark" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="16" fill="#1a5d40"/><rect x="20" y="10" width="24" height="14" rx="2" fill="#ffffff"/><rect x="11" y="21" width="42" height="21" rx="6" fill="#ffffff"/><rect x="18" y="33" width="28" height="4" rx="2" fill="#0f2a1e"/><rect x="43" y="26" width="4" height="4" rx="2" fill="#f5a524"/><rect x="20" y="35" width="24" height="19" rx="2" fill="#ffffff"/><rect x="24" y="41" width="16" height="2.5" rx="1.2" fill="#cfe3d6"/><rect x="24" y="46" width="10" height="2.5" rx="1.2" fill="#cfe3d6"/></svg>`
+    `<svg class="logo-mark" viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="6" fill="#0a7a50"/><rect x="20" y="10" width="24" height="14" rx="2" fill="#ffffff"/><rect x="11" y="21" width="42" height="21" rx="6" fill="#ffffff"/><rect x="18" y="33" width="28" height="4" rx="2" fill="#0f2a1e"/><rect x="43" y="26" width="4" height="4" rx="2" fill="#f5a524"/><rect x="20" y="35" width="24" height="19" rx="2" fill="#ffffff"/><rect x="24" y="41" width="16" height="2.5" rx="1.2" fill="#cfe3d6"/><rect x="24" y="46" width="10" height="2.5" rx="1.2" fill="#cfe3d6"/></svg>`
   );
 }
 

@@ -19,12 +19,7 @@ function insert({ audience, shopId = null, kind = 'info', title, body = '', link
 export const notifyShop = (shopId, n) => insert({ ...n, audience: 'shop', shopId });
 export const notifyAdmin = (n) => insert({ ...n, audience: 'admin' });
 
-/** Same message to every live (non-demo) shop. Returns how many shops got it. */
-export function broadcastToShops({ title, body = '', link = '', kind = 'announcement' }) {
-  const ids = db.prepare("SELECT id FROM shops WHERE is_demo = 0 AND status IN ('active','paused')").all();
-  db.transaction(() => ids.forEach((r) => notifyShop(r.id, { title, body, link, kind })))();
-  return ids.length;
-}
+// Messages from the admin to many shops at once: services/announcements.js.
 
 export const listShopNotifications = (shopId, limit = 50) =>
   db.prepare("SELECT * FROM notifications WHERE audience = 'shop' AND shop_id = ? ORDER BY id DESC LIMIT ?").all(shopId, limit);

@@ -79,14 +79,51 @@ export const SHOP_FILTERS = [
 ];
 export const shopFilter = (key) => SHOP_FILTERS.find((f) => f.key === key) || SHOP_FILTERS[0];
 
+// ---------- shop list sorting (server side; public/js/admin.js re-sorts in place without a reload) ----------
+const STATE_RANK = { pending: 0, expired: 1, active: 2, paused: 3, rejected: 4 };
+/** Sortable columns: value(shop, today) and the direction a first click uses. Empty values always sort last. */
+export const SHOP_SORTS = {
+  name: { label: 'Name A–Z', dir: 'asc', value: (s) => String(s.name || '').toLowerCase() },
+  status: { label: 'Status', dir: 'asc', value: (s) => STATE_RANK[s.state] ?? 9 },
+  plan: { label: 'Plan ends soonest', dir: 'asc', value: (s, today) => (isSampleShop(s) || !validDate(s.paid_until) ? '' : daysBetween(today, s.paid_until)) },
+  orders: { label: 'Most orders', dir: 'desc', value: (s) => Number(s.orders_count || 0) },
+  storage: { label: 'Most storage', dir: 'desc', value: (s) => Number(s.storage_bytes || 0) },
+  activity: { label: 'Latest order', dir: 'desc', value: (s) => s.last_order_at || '' },
+  joined: { label: 'Newest first', dir: 'desc', value: (s) => s.created_at || '' },
+};
+export const sortKey = (v) => (typeof v === 'string' && Object.hasOwn(SHOP_SORTS, v) ? v : '');
+export const sortDir = (v, key) => (v === 'asc' || v === 'desc' ? v : SHOP_SORTS[key]?.dir || 'asc');
+
+export function sortShops(list, key, dir, today = ymd()) {
+  const def = SHOP_SORTS[key];
+  if (!def) return list;
+  const sign = dir === 'desc' ? -1 : 1;
+  return list
+    .map((s) => ({ s, v: def.value(s, today) }))
+    .sort((a, b) => {
+      if (a.v === '' || b.v === '') return a.v === b.v ? 0 : a.v === '' ? 1 : -1;
+      return (typeof a.v === 'number' && typeof b.v === 'number' ? a.v - b.v : String(a.v).localeCompare(String(b.v))) * sign;
+    })
+    .map((x) => x.s);
+}
+
+/** Days left drawn as a thin bar (SVG attributes – no inline styles under the CSP). */
+export function daysMeter(shop, info) {
+  if (info.days == null) return '';
+  const span = shop.is_demo ? 14 : shop.billing_cycle === 'yearly' ? 365 : 30;
+  const pct = info.days < 0 ? 0 : Math.max(4, Math.min(100, Math.round((info.days / span) * 100)));
+  return html`<svg class="adm-days is-${info.tone}" viewBox="0 0 100 4" preserveAspectRatio="none" width="100" height="4" aria-hidden="true" focusable="false"><rect class="adm-days-track" width="100" height="4"/><rect class="adm-days-fill" width="${pct}" height="4"/></svg>`;
+}
+
 // ---------- links ----------
 /** /admin/shops URL that survives safeNext() (no "+" or quote characters). */
-export function listHref({ q = '', status = '' } = {}) {
+export function listHref({ q = '', status = '', sort = '', dir = '' } = {}, base = '/admin/shops') {
   const enc = (v) => encodeURIComponent(v).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
   const parts = [];
   if (status) parts.push(`status=${enc(status)}`);
   if (q) parts.push(`q=${enc(q)}`);
-  return '/admin/shops' + (parts.length ? `?${parts.join('&')}` : '');
+  if (sort) parts.push(`sort=${enc(sort)}`, `dir=${enc(dir || 'asc')}`);
+  return base + (parts.length ? `?${parts.join('&')}` : '');
 }
 
 export const telHref = (mobile) => {
@@ -108,6 +145,9 @@ export function pendingShopCount(res) {
   }
   return res.locals.adminPending;
 }
+
+/** Plain-text search key for a row (type-to-filter in public/js/admin.js): words plus the mobile's digits. */
+export const searchKey = (...parts) => parts.filter(Boolean).join(' ').toLowerCase().replace(/\s+/g, ' ').trim();
 
 /** Red count badge (nothing when zero). */
 export const countBadge = (n, label = '') =>
@@ -152,6 +192,14 @@ const AI = {
   note: '<path d="M4 4h16v12l-4 4H4z"/><path d="M16 20v-4h4M8 9h8M8 13h5"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
   external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  sort: '<path d="M8 9l4-4 4 4M8 15l4 4 4-4"/>',
+  sortUp: '<path d="M8 14l4-4 4 4"/>',
+  sortDown: '<path d="M8 10l4 4 4-4"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  caret: '<path d="M7 10l5 5 5-5"/>',
+  filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
   megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 6a9 9 0 0 1 0 12"/>',
 };
 export function adminIcon(name, cls = '') {

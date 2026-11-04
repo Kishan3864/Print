@@ -1,4 +1,4 @@
-import { html } from '../../lib/html.js';
+import { html, raw } from '../../lib/html.js';
 import { formatDate, formatTime } from '../../lib/util.js';
 import { getPlan } from '../../services/billing.js';
 import { emptyState, icon } from '../components.js';
@@ -37,17 +37,23 @@ function stats(s) {
   </section>`;
 }
 
+/** Header cell that sorts the table in place (public/js/admin.js); plain text without JS. */
+const sortHead = (key, label, dir, cls = '') =>
+  html`<th scope="col"${cls ? raw(` class="${cls}"`) : ''} aria-sort="none"><button type="button" class="adm-sort" data-sort="${key}" data-sort-dir="${dir}">${label}<span class="adm-sort-ic" aria-hidden="true">${adminIcon('sort')}</span></button></th>`;
+
 function rows(payments, showStatus) {
   return payments.map((p) => {
     const plan = getPlan(p.plan);
-    return html`<tr>
-      <td data-label="Shop" class="adm-pc-shop">${cell(html`<a class="adm-shop-name" href="/admin/shops/${p.shop_id}">${p.shop_name}</a>`, `/${p.shop_slug}`)}</td>
-      <td data-label="Amount" class="num adm-pc-amount"><b class="adm-amount">${paise(p.amount_paise)}</b></td>
-      <td data-label="Plan" class="adm-pc-plan">${cell(plan ? plan.name : p.plan, cycleLabel(p.cycle))}</td>
-      <td data-label="Paid by" class="adm-pc-method">${cell(METHOD_SHORT[p.method] || p.method, p.provider_payment_id || p.note)}</td>
-      <td data-label="Period" class="adm-pc-period">${periodText(p)}</td>
-      <td data-label="Date" class="adm-pc-date">${cell(formatDate(p.paid_at || p.created_at), formatTime(p.paid_at || p.created_at))}</td>
-      ${showStatus ? html`<td data-label="Status" class="adm-pc-status">${payPill(p.status)}</td>` : ''}
+    const when = p.paid_at || p.created_at || '';
+    const search = [p.shop_name, p.shop_slug, plan ? plan.name : p.plan, METHOD_SHORT[p.method] || p.method, p.provider_payment_id, p.note].filter(Boolean).join(' ').toLowerCase();
+    return html`<tr data-row data-search="${search}" data-s-shop="${String(p.shop_name || '').toLowerCase()}" data-s-amount="${p.amount_paise}" data-s-plan="${plan ? plan.name.toLowerCase() : p.plan}" data-s-date="${when}" data-s-status="${p.status}">
+      <td class="adm-pc-shop">${cell(html`<a class="adm-shop-name" href="/admin/shops/${p.shop_id}">${p.shop_name}</a>`, `/${p.shop_slug}`)}</td>
+      <td class="num adm-pc-amount"><b class="adm-amount">${paise(p.amount_paise)}</b></td>
+      <td class="adm-pc-plan">${cell(plan ? plan.name : p.plan, cycleLabel(p.cycle))}</td>
+      <td class="adm-pc-method">${cell(METHOD_SHORT[p.method] || p.method, p.provider_payment_id || p.note)}</td>
+      <td class="adm-pc-period">${periodText(p)}</td>
+      <td class="adm-pc-date">${cell(formatDate(when), formatTime(when))}</td>
+      ${showStatus ? html`<td class="adm-pc-status">${payPill(p.status)}</td>` : ''}
     </tr>`;
   });
 }
@@ -76,11 +82,30 @@ export function paymentsView({ stats: s, payments, filter, counts }) {
         )}
       </nav>
       ${payments.length
-        ? html`<div class="table-wrap adm-table-wrap">
-            <table class="table table-cards adm-paylog">
-              <thead><tr><th scope="col">Shop</th><th scope="col" class="num">Amount</th><th scope="col">Plan</th><th scope="col">Paid by</th><th scope="col">Period</th><th scope="col">Date</th>${showStatus ? html`<th scope="col">Status</th>` : ''}</tr></thead>
+        ? html`<div class="adm-toolbar">
+            <div class="search-input adm-toolbar-search">
+              ${icon('search')}
+              <label class="sr-only" for="pay-q">Filter payments</label>
+              <input type="search" id="pay-q" placeholder="Filter by shop, plan, method or reference" autocomplete="off" data-row-filter="#adm-paylog">
+              <kbd class="adm-kbd" aria-hidden="true">/</kbd>
+            </div>
+            <div class="adm-toolbar-sort">
+              <label class="sr-only" for="pay-sort">Sort payments</label>
+              <select id="pay-sort" data-sort-select="#adm-paylog">
+                <option value="">Sort: newest first</option>
+                <option value="amount">Sort: biggest amount</option>
+                <option value="shop">Sort: shop A–Z</option>
+                <option value="plan">Sort: plan</option>
+              </select>
+            </div>
+            <p class="adm-count" aria-live="polite" data-row-count data-noun="payment"><b>${num(payments.length)}</b> payment${payments.length === 1 ? '' : 's'}</p>
+          </div>
+          <div class="table-wrap adm-table-wrap">
+            <table class="table adm-table adm-paylog" id="adm-paylog" data-sortable>
+              <thead><tr>${sortHead('shop', 'Shop', 'asc', 'adm-pc-shop')}${sortHead('amount', 'Amount', 'desc', 'num adm-pc-amount')}${sortHead('plan', 'Plan', 'asc', 'adm-pc-plan')}<th scope="col" class="adm-pc-method">Paid by</th><th scope="col" class="adm-pc-period">Period</th>${sortHead('date', 'Date', 'desc', 'adm-pc-date')}${showStatus ? sortHead('status', 'Status', 'asc', 'adm-pc-status') : ''}</tr></thead>
               <tbody>${rows(payments, showStatus)}</tbody>
             </table>
+            <p class="adm-nomatch" data-row-empty hidden>No payment matches this filter.</p>
           </div>`
         : emptyState({
             title: filter === 'created' ? 'No unfinished payments' : 'No payments yet',

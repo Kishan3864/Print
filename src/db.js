@@ -209,6 +209,23 @@ const MIGRATIONS = [
   `ALTER TABLE payments ADD COLUMN kind TEXT NOT NULL DEFAULT 'new';
    ALTER TABLE payments ADD COLUMN credit_paise INTEGER NOT NULL DEFAULT 0;
    ALTER TABLE payments ADD COLUMN superseded_at TEXT;`,
+
+  // 5: admin announcements – one row per send (audience, reach), linked to each shop's notification
+  `CREATE TABLE IF NOT EXISTS announcements (
+     id          INTEGER PRIMARY KEY,
+     nonce       TEXT UNIQUE,
+     audience    TEXT NOT NULL,
+     shop_id     INTEGER REFERENCES shops(id) ON DELETE SET NULL,
+     shop_name   TEXT NOT NULL DEFAULT '',
+     title       TEXT NOT NULL,
+     body        TEXT NOT NULL DEFAULT '',
+     link        TEXT NOT NULL DEFAULT '',
+     important   INTEGER NOT NULL DEFAULT 0,
+     reached     INTEGER NOT NULL DEFAULT 0,
+     created_at  TEXT NOT NULL
+   );
+   ALTER TABLE notifications ADD COLUMN announcement_id INTEGER REFERENCES announcements(id) ON DELETE SET NULL;
+   CREATE INDEX IF NOT EXISTS idx_notifications_announcement ON notifications(announcement_id, read_at);`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

@@ -223,7 +223,7 @@ export function dashboardView(d) {
               <div class="search-input">
                 ${icon('search')}
                 <label class="sr-only" for="order-q">Search orders</label>
-                <input type="search" id="order-q" name="q" value="${q}" placeholder="Search name, mobile or P-number" maxlength="60" autocomplete="off" enterkeyhint="search">
+                <input type="search" id="order-q" name="q" value="${q}" placeholder="Name, mobile or P-number" maxlength="60" autocomplete="off" enterkeyhint="search">
               </div>
             </form>`
           : ''}
