@@ -1,91 +1,101 @@
 import { html } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { formatBytes, formatDate, timeAgo } from '../../lib/util.js';
-import { categoryLabel } from '../../services/support.js';
 import { CYCLES, formatINR } from '../../services/billing.js';
 import { icon, shopStatePill } from '../components.js';
 import { adminIcon, demoTag, listHref, num, paidInfo, planName, plural, shopAvatar, toneClass } from './common.js';
 
-// /admin – the super-admin dashboard: money, subscriptions, attention lists.
+// /admin – the super-admin home: what needs you now, a few numbers, what happened lately.
 
 const greeting = () => {
   const h = Number(new Intl.DateTimeFormat('en-IN', { hour: 'numeric', hourCycle: 'h23', timeZone: config.timeZone }).format(new Date()));
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 };
 
-/** One KPI tile. A link when `href` is given (the whole tile is the tap target). */
-function kpi({ label, value, sub = '', ic, tone = '', href = '', big = false }) {
-  const inner = html`<span class="adm-kpi-top"><span class="adm-kpi-label">${label}</span><span class="adm-kpi-ic">${ic}</span></span>
-    <span class="adm-kpi-value">${value}</span>
-    ${sub ? html`<span class="adm-kpi-sub">${sub}</span>` : ''}`;
-  const cls = `adm-kpi${tone ? ' is-' + tone : ''}${big ? ' adm-kpi-big' : ''}`;
-  return href ? html`<a class="${cls} is-link" href="${href}">${inner}</a>` : html`<div class="${cls}">${inner}</div>`;
-}
-
-function revenueTile(rev) {
-  return html`<a class="adm-kpi adm-kpi-revenue is-link" href="/admin/payments">
-    <span class="adm-kpi-top"><span class="adm-kpi-label">Revenue this month</span><span class="adm-kpi-ic">${adminIcon('rupee')}</span></span>
-    <span class="adm-rev">
-      <span class="adm-rev-main"><span class="adm-kpi-value">${formatINR(rev.monthRupees)}</span><span class="adm-kpi-sub">${plural(rev.monthCount, 'payment')} this month</span></span>
-      <span class="adm-rev-total"><span class="adm-rev-label">All time</span><b>${formatINR(rev.totalRupees)}</b><span class="adm-kpi-sub">${plural(rev.totalCount, 'payment')}</span></span>
-    </span>
+// ---------- needs your action ----------
+/** One big tile: the count, what it is, and what to do about it. The whole tile is the link. */
+function actionTile({ n, label, todo, done, href, tone, ic }) {
+  return html`<a class="adm-act${n ? ` is-${tone}` : ' is-clear'}" href="${href}">
+    <span class="adm-act-ic">${n ? ic : icon('check')}</span>
+    <span class="adm-act-n">${num(n)}</span>
+    <span class="adm-act-label">${label}</span>
+    <span class="adm-act-todo">${n ? todo : done}${n ? adminIcon('chevron') : ''}</span>
   </a>`;
 }
 
-function kpiGrid({ rev, overview, demoActive, openTickets }) {
-  return html`<section class="adm-kpis" aria-label="Key numbers">
-    ${revenueTile(rev)}
-    ${kpi({ label: 'Active subscriptions', value: num(rev.activeSubscriptions), sub: 'Paying shops taking orders', ic: icon('check'), tone: 'ok', href: listHref({ status: 'active' }) })}
-    ${kpi({
-      label: 'Open tickets',
-      value: num(openTickets),
-      sub: openTickets ? 'Waiting for your reply' : 'All answered',
-      ic: adminIcon('chat'),
-      tone: openTickets ? 'primary' : '',
-      href: '/admin/tickets',
-    })}
-    ${kpi({
-      label: 'Expiring in 7 days',
-      value: num(rev.expiringSoon),
-      sub: rev.expiringSoon ? 'Remind them to renew' : 'Nothing due this week',
-      ic: adminIcon('hourglass'),
-      tone: rev.expiringSoon ? 'warn' : '',
-      href: listHref({ status: 'expiring' }),
-    })}
-    ${kpi({
-      label: 'Expired',
-      value: num(rev.expired),
-      sub: rev.expired ? 'Order link closed – follow up' : 'None right now',
-      ic: icon('alert'),
-      tone: rev.expired ? 'danger' : '',
-      href: listHref({ status: 'expired' }),
-    })}
-    ${kpi({
-      label: 'Awaiting payment',
-      value: num(overview.pending),
-      sub: overview.pending ? 'Registered, not paid yet' : 'No one waiting',
-      ic: icon('clock'),
-      href: listHref({ status: 'pending' }),
-    })}
-    ${kpi({ label: 'Demo shops active', value: num(demoActive), sub: 'Leads trying Brighton Print', ic: icon('sparkle'), href: listHref({ status: 'demo' }) })}
+function actionSection({ openTickets, unreadTickets, pending, expiring, expired }) {
+  const total = openTickets + pending + expiring + expired;
+  return html`<section class="adm-section" aria-labelledby="adm-act-h">
+    <div class="adm-section-head">
+      <h2 id="adm-act-h">Needs your action ${total ? html`<span class="badge">${num(total)}</span>` : ''}</h2>
+      <p>${total ? 'Tap a tile to see who is waiting.' : 'All clear – nothing is waiting on you right now.'}</p>
+    </div>
+    <div class="adm-acts">
+      ${actionTile({
+        n: openTickets,
+        label: 'Support tickets',
+        todo: unreadTickets ? `${num(unreadTickets)} with a new message – reply` : 'Open – reply to the shop',
+        done: 'Every ticket answered',
+        href: '/admin/tickets',
+        tone: 'danger',
+        ic: adminIcon('chat'),
+      })}
+      ${actionTile({
+        n: pending,
+        label: 'Awaiting payment',
+        todo: 'Registered, not paid – follow up',
+        done: 'No one waiting to pay',
+        href: listHref({ status: 'pending' }),
+        tone: 'orange',
+        ic: icon('clock'),
+      })}
+      ${actionTile({
+        n: expiring,
+        label: 'Plan ends in 7 days',
+        todo: 'Remind them to renew',
+        done: 'Nothing ends this week',
+        href: listHref({ status: 'expiring' }),
+        tone: 'warn',
+        ic: adminIcon('hourglass'),
+      })}
+      ${actionTile({
+        n: expired,
+        label: 'Plan ended',
+        todo: 'Order link closed – call them',
+        done: 'No expired plans',
+        href: listHref({ status: 'expired' }),
+        tone: 'danger',
+        ic: icon('alert'),
+      })}
+    </div>
   </section>`;
 }
 
-function usageStrip(o) {
-  const item = (label, value, ic) => html`<div class="adm-strip-item"><span class="adm-strip-ic">${ic}</span><span><span class="adm-strip-label">${label}</span><b>${value}</b></span></div>`;
-  return html`<section class="adm-strip" aria-label="Platform usage (demo shops not counted)">
-    ${item('Orders today', num(o.ordersToday), icon('orders'))}
-    ${item('Orders total', num(o.ordersTotal), icon('printer'))}
-    ${item('Storage used', formatBytes(o.storage), adminIcon('database'))}
-    ${item('Registered shops', num(o.totalShops), icon('store'))}
+// ---------- at a glance ----------
+function stat({ label, value, sub, href, ic }) {
+  return html`<a class="adm-stat" href="${href}">
+    <span class="adm-stat-ic">${ic}</span>
+    <span class="adm-stat-text"><span class="adm-stat-label">${label}</span><b class="adm-stat-value">${value}</b>${sub ? html`<span class="adm-stat-sub">${sub}</span>` : ''}</span>
+  </a>`;
+}
+
+function glance({ rev, overview, demoActive }) {
+  return html`<section class="adm-section" aria-labelledby="adm-glance-h">
+    <div class="adm-section-head"><h2 id="adm-glance-h">At a glance</h2></div>
+    <div class="adm-stats">
+      ${stat({ label: 'Revenue this month', value: formatINR(rev.monthRupees), sub: `${formatINR(rev.totalRupees)} all time`, href: '/admin/payments', ic: adminIcon('rupee') })}
+      ${stat({ label: 'Paying shops', value: num(rev.activeSubscriptions), sub: `${num(overview.totalShops)} registered`, href: listHref({ status: 'active' }), ic: icon('store') })}
+      ${stat({ label: 'Orders today', value: num(overview.ordersToday), sub: `${num(overview.ordersTotal)} total · ${formatBytes(overview.storage)} stored`, href: listHref(), ic: icon('orders') })}
+      ${stat({ label: 'Demo shops running', value: num(demoActive), sub: 'Leads trying it out', href: listHref({ status: 'demo' }), ic: icon('sparkle') })}
+    </div>
   </section>`;
 }
 
-/** Card with a header, a list of rows and an optional "view all" link. */
-function panel({ id, title, count = null, href = '', hrefLabel = 'View all', rows, empty }) {
+// ---------- recent activity ----------
+function panel({ id, title, href, hrefLabel = 'See all', rows, empty }) {
   return html`<section class="card adm-panel" aria-labelledby="${id}">
     <div class="adm-panel-head">
-      <h2 id="${id}">${title}${count != null ? html` <span class="count">${num(count)}</span>` : ''}</h2>
+      <h3 id="${id}">${title}</h3>
       ${href ? html`<a class="adm-panel-link" href="${href}">${hrefLabel}${adminIcon('chevron')}</a>` : ''}
     </div>
     ${rows.length ? html`<ul class="adm-list">${rows}</ul>` : html`<p class="adm-panel-empty">${icon('check')}<span>${empty}</span></p>`}
@@ -96,36 +106,55 @@ const row = ({ href, lead, title, sub, side }) =>
   html`<li><a class="adm-item" href="${href}">${lead}<span class="adm-item-main"><span class="adm-item-title">${title}</span><span class="adm-item-sub">${sub}</span></span><span class="adm-item-side">${side}</span></a></li>`;
 
 function expiringPanel(shops, today) {
+  if (!shops.length) return '';
   return panel({
     id: 'p-expiring',
-    title: 'Expiring soon',
-    count: shops.length,
+    title: 'Plans ending soon',
     href: listHref({ status: 'expiring' }),
-    rows: shops.slice(0, 6).map((s) => {
+    rows: shops.slice(0, 5).map((s) => {
       const info = paidInfo(s, today);
       return row({
         href: `/admin/shops/${s.id}`,
-        lead: shopAvatar(s, 34),
+        lead: shopAvatar(s, 40),
         title: s.name,
         sub: `${planName(s.plan) || 'Plan'} · ends ${formatDate(s.paid_until)}`,
         side: html`<span class="${toneClass(info.tone)}">${info.text}</span>`,
       });
     }),
-    empty: 'No plans end in the next 7 days.',
+    empty: '',
+  });
+}
+
+function ticketsPanel(tickets) {
+  if (!tickets.length) return '';
+  return panel({
+    id: 'p-tickets',
+    title: 'Tickets waiting',
+    href: '/admin/tickets',
+    rows: tickets.map((t) =>
+      row({
+        href: `/admin/tickets/${t.id}`,
+        lead: html`<span class="adm-item-ic${t.admin_unread ? ' is-new' : ''}">${adminIcon('chat')}</span>`,
+        title: html`${t.admin_unread ? html`<span class="adm-dot" title="New message"></span><span class="sr-only">New message: </span>` : ''}${t.subject}`,
+        sub: t.shop_name,
+        side: html`<span class="adm-sub">${timeAgo(t.updated_at)}</span>`,
+      })
+    ),
+    empty: '',
   });
 }
 
 function paymentsPanel(payments) {
   return panel({
     id: 'p-payments',
-    title: 'Recent payments',
+    title: 'Latest payments',
     href: '/admin/payments',
     rows: payments.map((p) =>
       row({
         href: `/admin/shops/${p.shop_id}`,
         lead: html`<span class="adm-item-ic is-ok">${adminIcon('rupee')}</span>`,
         title: p.shop_name,
-        sub: `${planName(p.plan) || p.plan} · ${CYCLES[p.cycle] || p.cycle} · ${p.method === 'manual' ? 'Manual' : 'PayU'}`,
+        sub: `${planName(p.plan) || p.plan} · ${CYCLES[p.cycle] || p.cycle} · ${p.method === 'manual' ? 'Recorded by you' : 'Online'}`,
         side: html`<b class="adm-amount">${formatINR(p.amount_paise / 100)}</b><span class="adm-sub">${timeAgo(p.paid_at || p.created_at)}</span>`,
       })
     ),
@@ -142,8 +171,8 @@ function signupsPanel(shops) {
     rows: shops.map((s) =>
       row({
         href: `/admin/shops/${s.id}`,
-        lead: shopAvatar(s, 34),
-        title: html`<span class="adm-item-text">${s.name}</span>${s.is_demo ? demoTag(s) : ''}`,
+        lead: shopAvatar(s, 40),
+        title: html`${s.name}${s.is_demo ? demoTag(s) : ''}`,
         sub: `${s.city || 'No city'} · ${timeAgo(s.created_at)}`,
         side: shopStatePill(s.state),
       })
@@ -152,26 +181,9 @@ function signupsPanel(shops) {
   });
 }
 
-function ticketsPanel(tickets, total) {
-  return panel({
-    id: 'p-tickets',
-    title: 'Open tickets',
-    count: total,
-    href: '/admin/tickets',
-    rows: tickets.map((t) =>
-      row({
-        href: `/admin/tickets/${t.id}`,
-        lead: html`<span class="adm-item-ic${t.admin_unread ? ' is-new' : ''}">${adminIcon('chat')}</span>`,
-        title: html`${t.admin_unread ? html`<span class="adm-dot" title="New message"></span><span class="sr-only">New message: </span>` : ''}<span class="adm-item-text">${t.subject}</span>`,
-        sub: `${t.shop_name} · ${categoryLabel(t.category)}`,
-        side: html`<span class="adm-sub">${timeAgo(t.updated_at)}</span>`,
-      })
-    ),
-    empty: 'No open tickets. Everyone has an answer.',
-  });
-}
-
 export function overviewView(res, { rev, overview, demoActive, openTickets, expiring, payments, signups, tickets, today }) {
+  const unreadTickets = tickets.filter((t) => t.admin_unread).length;
+  const todo = [ticketsPanel(tickets), expiringPanel(expiring, today)].filter(Boolean);
   return html`<div class="container adm">
     <div class="adm-pagehead">
       <div>
@@ -179,23 +191,27 @@ export function overviewView(res, { rev, overview, demoActive, openTickets, expi
         <h1>Overview</h1>
       </div>
       <div class="adm-pagehead-actions">
-        <a class="btn btn-secondary" href="/admin/notify">${adminIcon('megaphone')}<span>Announcement</span></a>
-        <a class="btn btn-primary" href="/admin/shops">${icon('store')}<span>All shops</span></a>
+        <a class="btn btn-secondary" href="/admin/demo-links">${icon('link')}<span>Demo link</span></a>
+        <a class="btn btn-secondary" href="/admin/notifications#announce">${adminIcon('megaphone')}<span>Announcement</span></a>
       </div>
     </div>
 
-    ${kpiGrid({ rev, overview, demoActive, openTickets })}
-    ${usageStrip(overview)}
+    ${actionSection({ openTickets, unreadTickets, pending: overview.pending, expiring: rev.expiringSoon, expired: rev.expired })}
+    ${todo.length ? html`<div class="adm-panels adm-panels-todo">${todo}</div>` : ''}
+    ${glance({ rev, overview, demoActive })}
 
-    <div class="adm-panels">
-      <div class="adm-panels-col">
-        ${expiringPanel(expiring, today)}
+    <section class="adm-section" aria-labelledby="adm-recent-h">
+      <div class="adm-section-head"><h2 id="adm-recent-h">Recent activity</h2></div>
+      <div class="adm-panels">
         ${paymentsPanel(payments)}
-      </div>
-      <div class="adm-panels-col">
-        ${ticketsPanel(tickets, openTickets)}
         ${signupsPanel(signups)}
       </div>
-    </div>
+    </section>
+
+    <nav class="adm-quick" aria-label="More admin pages">
+      <a href="/admin/demo-links">${icon('link')}<span>Demo links</span>${adminIcon('chevron')}</a>
+      <a href="/admin/plans">${adminIcon('tag')}<span>Plans &amp; prices</span>${adminIcon('chevron')}</a>
+      <a href="/admin/notifications">${icon('bell')}<span>Notifications</span>${res.locals.adminUnread ? html`<span class="badge">${num(res.locals.adminUnread)}</span>` : ''}${adminIcon('chevron')}</a>
+    </nav>
   </div>`;
 }

@@ -102,8 +102,8 @@ function readOrder(req, shop) {
 
   const files = req.files || [];
   if (req.uploadError) errors.files = `${req.uploadError} Please choose your files again.`;
-  else if (!files.length) errors.files = 'Please add at least one file to print.';
-  else if (Object.keys(errors).length) errors.files = 'Please choose your files again – they are not kept when something needs fixing.';
+  else if (!files.length) errors.files = 'Please add the file you want to print.';
+  else if (Object.keys(errors).length) errors.files = 'Please add your files again – they are not kept when something needs fixing.';
 
   const data = {
     customer_name: values.name,
@@ -177,17 +177,17 @@ const decide = (decision) => (req, res) => {
   const back = trackPath(shop, order);
   const note = clean(req.body?.note, 1000);
   if (order.status !== 'proof_sent') {
-    flash(req, 'error', 'There is no proof waiting for your approval right now.');
+    flash(req, 'error', 'There is no design preview waiting for your OK right now.');
     return res.redirect(303, back);
   }
   // The decision must be about the proof the customer was looking at.
   const proof = latestProof(order);
   if (!proof || String(proof.id) !== clean(req.body?.proof_id, 20)) {
-    flash(req, 'error', 'The shop has sent a new proof – please check it before you decide.');
+    flash(req, 'error', 'The shop has sent a newer preview – please check it first.');
     return res.redirect(303, `${back}#proof`);
   }
   if (decision === 'changes' && !note) {
-    flash(req, 'error', 'Please tell the shop what should change.');
+    flash(req, 'error', 'Please write what should change.');
     return res.redirect(303, `${back}#proof`);
   }
   try {
@@ -200,8 +200,8 @@ const decide = (decision) => (req, res) => {
     req,
     'success',
     decision === 'approve'
-      ? `Thank you! Proof approved – ${shop.name} will start printing your order.`
-      : `Your change request was sent to ${shop.name}. The new proof will appear on this page.`
+      ? `Thank you! You said OK – ${shop.name} will print your order now.`
+      : `Sent to ${shop.name}. The new preview will show on this page.`
   );
   res.redirect(303, back);
 };
@@ -216,12 +216,12 @@ router.post(`${ORDER}/version`, actionLimiter, loadShop, loadOrder, checkQuota, 
   const back = `${trackPath(shop, order)}#files`;
   if (req.uploadError || !req.files.length) {
     discardUploads(req);
-    flash(req, 'error', req.uploadError || 'Please choose the corrected file.');
+    flash(req, 'error', req.uploadError || 'Please choose the new file.');
     return res.redirect(303, back);
   }
   try {
     addCustomerVersion(shop, order, req.files, clean(req.body.note, 500));
-    flash(req, 'success', `New version sent to ${shop.name}. The old file is marked replaced – only the new one will be printed.`);
+    flash(req, 'success', `New file sent to ${shop.name}. Only the new file will be printed.`);
   } catch (err) {
     discardUploads(req);
     flash(req, 'error', err.message);

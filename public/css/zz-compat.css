@@ -1,17 +1,14 @@
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
   .tabbar { background: var(--bg-elev); }
   .set-save, .lp-kicker { background: var(--surface); }
-  .seg input:checked + span, .dropzone:hover, .dropzone.is-over, .set-preview-drop, .set-link, .set-renew,
-  .cust-how li, .cust-chip, .cust-sec-num, .adm-stat-ic, .ord-stat-icon, .lp-who-ic,
-  .set-tip-list li:nth-child(1) .set-tip-icon, .set-tip-list li:nth-child(2) .set-tip-icon, .set-tip-list li:nth-child(4) .set-tip-icon { background: var(--surface-2); }
+  .seg input:checked + span, .dropzone:hover, .dropzone.is-over, .dropzone.has-file, .set-preview-drop,
+  .adm-stat-ic, .lp-who-ic { background: var(--surface-2); }
   .history .h-actor-customer .h-dot { background: var(--surface-3); }
-  .lp-row.is-fresh, .lp-chips .is-on, .ord-newbar, .ord-newbar:hover { background: var(--info-soft); }
+  .lp-row.is-fresh, .lp-chips .is-on { background: var(--info-soft); }
   .waiting-steps li.is-current, .adm-stat.is-attention, .adm-table tr.is-pending > td, .adm-table tr.adm-approve-row > td,
-  .adm-table tr.is-pending, .adm-table tr.adm-approve-row, .ord-attn, .ord-attn:hover, .ord-callout { background: var(--warn-soft); }
+  .adm-table tr.is-pending, .adm-table tr.adm-approve-row { background: var(--warn-soft); }
   .adm-reveal { background: var(--success-soft); }
-  .cust-files-field.has-error .dropzone { background: var(--danger-soft); }
   .lp-ph-steps .is-current { background: var(--magenta); opacity: .45; }
   .lp-tile-c, .lp-tile-m, .lp-tile-y { --tile-bg: var(--surface); }
   .dm-card-customer, .dm-card-shop { --dm-bg: var(--surface); }
-  .ord-wa-soft, .ord-wa-soft:hover { --btn-bg: var(--success-soft); --btn-bd: transparent; }
 }

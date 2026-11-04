@@ -4,6 +4,7 @@ import { addDays, formatDate, isHexColor, isIsoDate, inkFor, waNumber, ymd } fro
 import { PLANS, PLAN_LABEL } from '../../lib/status.js';
 import { CYCLES, getPlan, isSampleShop } from '../../services/billing.js';
 import { orderFormUrl, shopPath } from '../../services/notify.js';
+import { db } from '../../db.js';
 
 // Shared helpers for the super-admin views (and the date maths used by the admin routes).
 
@@ -99,8 +100,24 @@ export const loginUrl = () => `${config.baseUrl}/login`;
 /** Customer page: absolute URL (works from the admin host) + the short path to show. */
 export const customerLink = (shop) => ({ href: orderFormUrl(shop), label: shopPath(shop) });
 
+// ---------- badge counts for the admin chrome ----------
+/** Live shops that registered but have not paid yet (red badge on Shops). Counted once per response. */
+export function pendingShopCount(res) {
+  if (res.locals.adminPending == null) {
+    res.locals.adminPending = db.prepare("SELECT COUNT(*) AS n FROM shops WHERE is_demo = 0 AND status = 'pending'").get().n;
+  }
+  return res.locals.adminPending;
+}
+
+/** Red count badge (nothing when zero). */
+export const countBadge = (n, label = '') =>
+  n ? html`<span class="badge"${label ? raw(` title="${label}: ${n}"`) : ''}>${n > 99 ? '99+' : n}</span>` : '';
+
+/** Ticket status pill (admin colours). */
+export const ticketStatusPill = (status, label) => html`<span class="pill adm-tk-${status}">${label || status}</span>`;
+
 // ---------- small pieces ----------
-export const num = (n) => Number(n || 0).toLocaleString('en-IN');
+export const num =(n) => Number(n || 0).toLocaleString('en-IN');
 
 export const demoTag = (shop) =>
   shop && isSampleShop(shop) ? html`<span class="adm-tag adm-tag-sample">Sample</span>` : html`<span class="adm-tag">Demo</span>`;

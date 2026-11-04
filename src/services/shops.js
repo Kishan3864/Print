@@ -133,6 +133,10 @@ export function shopCounts(shopId) {
   return { ...counts, newToday, total };
 }
 
+/** Orders waiting on the shop: new, customer asked for changes, customer said OK (badge on the Orders tab). */
+export const todoCount = (shopId) =>
+  db.prepare("SELECT COUNT(*) AS n FROM orders WHERE shop_id = ? AND status IN ('new', 'changes_requested', 'approved')").get(shopId).n;
+
 /** Every shop with usage numbers, pending first, then newest. */
 export function listShopsForAdmin({ q = '', status = '' } = {}) {
   const rows = db

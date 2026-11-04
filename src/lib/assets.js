@@ -5,7 +5,7 @@ import { config, paths } from '../config.js';
 
 // The site ships ONE stylesheet, /css/app.css, built in memory from the area
 // files in public/css (no build step). Order matters: core first, compat last.
-const CSS_ORDER = ['core', 'public', 'shop', 'customer', 'billing', 'support', 'admin', 'platform', 'zz-compat'];
+const CSS_ORDER = ['core', 'public', 'shop', 'account', 'customer', 'billing', 'support', 'admin', 'platform', 'zz-compat'];
 
 function buildCss() {
   return CSS_ORDER.map((n) => path.join(paths.public, 'css', `${n}.css`))

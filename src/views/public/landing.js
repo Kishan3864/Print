@@ -17,10 +17,10 @@ function phoneMockup() {
         <div class="lp-order">
           <div class="lp-order-row">
             <span class="order-no lp-order-no">Order P-1024</span>
-            <span class="pill pill-proof_sent">Proof sent</span>
+            <span class="pill pill-proof_sent">Waiting for OK</span>
           </div>
-          <div class="lp-proof">${icon('file')}<span>Proof</span></div>
-          <div class="lp-approve">${icon('check')}<span>Approve proof</span></div>
+          <div class="lp-proof">${icon('file')}<span>Design preview</span></div>
+          <div class="lp-approve">${icon('check')}<span>OK, print it</span></div>
         </div>
       </div>
     </div>
@@ -33,7 +33,7 @@ function hero() {
       <div class="lp-hero-copy">
         <p class="lp-eyebrow">Online order desk for print shops</p>
         <h1 class="lp-title">One link. One order number. One final file.</h1>
-        <p class="lp-sub">Your customers upload print files through one link and approve the proof, so you print the right file every time.</p>
+        <p class="lp-sub">Your customers upload print files through one link and tap OK on the design, so you print the right file every time.</p>
         <div class="lp-cta">
           <a class="btn btn-primary btn-lg" href="/demo"><span>Try live demo</span>${icon('arrowRight')}</a>
           <a class="btn btn-secondary btn-lg" href="/register">Register your shop</a>
@@ -48,7 +48,7 @@ function hero() {
 const FEATURES = [
   ['upload', 'Upload link with size & quantity', 'Customers choose size, quantity and colour, then upload their files from any phone.'],
   ['orders', 'Order number for every file', 'Every order gets its own number, so the right file is easy to find at the counter.'],
-  ['eye', 'Customer approves the proof before printing', 'Send a proof. The customer taps Approve or asks for changes. Fewer reprints.'],
+  ['eye', 'Customer OKs the design before printing', 'Send a design preview. The customer taps OK or asks for changes. Fewer reprints.'],
   ['whatsapp', 'Ready message in one tap', 'One tap opens WhatsApp with the order number and pickup details already written.'],
 ];
 
@@ -76,7 +76,7 @@ function features() {
 const STEPS = [
   ['Register and choose a plan', 'Fill in a short form and pay online. Your order link opens in about a minute.'],
   ['Share your link and QR code', 'Put the QR code at your counter and share the link on WhatsApp and Instagram.'],
-  ['Customers upload, you send a proof', 'New orders show up on your dashboard. Upload the proof from the order.'],
+  ['Customers upload, you check', 'New orders show up on your dashboard with a sound. Print, or send a design preview first.'],
   ['They approve, you print', 'Print the approved file, mark it ready and send the ready message.'],
 ];
 
@@ -127,7 +127,7 @@ function audience() {
 }
 
 // ---------- pricing ----------
-const PLAN_FEATURES = ['Unlimited orders', 'Order link + QR code', 'Customer proof approval', 'WhatsApp ready messages', 'Help & support'];
+const PLAN_FEATURES = ['Unlimited orders', 'Order link + QR code', 'Customer OK on designs', 'WhatsApp ready messages', 'Help & support'];
 
 /** Yearly saving against 12 monthly payments: { rupees, pct } (0 when there is none). */
 function yearlySaving(plan) {

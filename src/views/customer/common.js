@@ -13,8 +13,8 @@ export const telHref = (phone) => `tel:${String(phone || '').replace(/[^\d+]/g, 
 export function contactActions(shop, waText) {
   if (!shop.phone) return '';
   return html`<div class="cust-contact-actions">
-    <a class="btn btn-secondary btn-lg" href="${telHref(shop.phone)}">${icon('phone')}<span>Call ${prettyPhone(shop.phone)}</span></a>
     <a class="btn btn-wa btn-lg" href="${waLink(shop.phone, waText)}" target="_blank" rel="noopener">${icon('whatsapp')}<span>WhatsApp</span></a>
+    <a class="btn btn-secondary btn-lg" href="${telHref(shop.phone)}">${icon('phone')}<span>Call ${prettyPhone(shop.phone)}</span></a>
   </div>`;
 }
 
@@ -24,10 +24,6 @@ export const shopAddress = (shop) =>
 /** Shown when the logged-in shop owner looks at their own customer page. */
 export const ownerNote = (text, href, linkText) =>
   html`<div class="cust-owner" role="note">${icon('eye')}<span>${text}</span><a href="${href}">${linkText}</a></div>`;
-
-/** Card heading with an icon tile. */
-export const cardTitle = (id, iconName, text, extra = '') =>
-  html`<h2 class="cust-h2" id="${id}"><span class="cust-h2-ic">${icon(iconName)}</span><span>${text}</span>${extra}</h2>`;
 
 // Decorative glyphs for the colour / sides choices (static SVG, no user data).
 export const GLYPH = {

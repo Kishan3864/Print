@@ -74,8 +74,8 @@ export function createApp() {
     res.setHeader('Cache-Control', config.isProd ? 'public, max-age=604800' : 'no-cache');
     res.type('text/css').send(cssBundle());
   });
-  app.use('/fonts/jakarta', express.static(path.join(ROOT, 'node_modules/@fontsource/plus-jakarta-sans/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
-  app.use('/fonts/mono', express.static(path.join(ROOT, 'node_modules/@fontsource/jetbrains-mono/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
+  app.use('/fonts/poppins', express.static(path.join(ROOT, 'node_modules/@fontsource/poppins/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
+  app.use('/fonts/comfortaa', express.static(path.join(ROOT, 'node_modules/@fontsource/comfortaa/files'), { maxAge: 365 * day, immutable: true, fallthrough: false }));
   app.use(
     express.static(paths.public, {
       index: false,

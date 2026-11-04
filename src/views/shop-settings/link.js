@@ -15,9 +15,6 @@ const shopMark = (shop, cls) =>
     ? html`<img class="${cls}-logo" src="/logo/${shop.slug}?v=${shop.logo_file.slice(0, 8)}" alt="" width="96" height="96">`
     : html`<span class="${cls}-initial" aria-hidden="true">${initialOf(shop)}</span>`;
 
-/** The link split into host + path so the shop's own part stands out. */
-const prettyLink = (shop) => html`<span class="set-link-host">${shortUrl(config.baseUrl)}</span><span class="set-link-slug">${shopPath(shop)}</span>`;
-
 export function shareTexts(shop) {
   const url = orderFormUrl(shop);
   return {
@@ -28,12 +25,12 @@ export function shareTexts(shop) {
 }
 
 function copyBlock({ id, label, text, rows, hint }) {
-  return html`<div class="set-copy">
-    <div class="set-copy-head">
+  return html`<div class="lk-copy">
+    <div class="lk-copy-head">
       <label for="${id}">${label}</label>
       <button type="button" class="btn btn-soft btn-sm" data-copy-target="#${id}" data-copy-msg="Message copied">${icon('copy')}<span>Copy</span></button>
     </div>
-    <textarea id="${id}" class="set-copy-text" rows="${rows}" readonly${hint ? raw(` aria-describedby="${id}-hint"`) : ''}>${text}</textarea>
+    <textarea id="${id}" class="lk-copy-text" rows="${rows}" readonly${hint ? raw(` aria-describedby="${id}-hint"`) : ''}>${text}</textarea>
     ${hint ? html`<p class="hint" id="${id}-hint">${hint}</p>` : ''}
   </div>`;
 }
@@ -46,106 +43,98 @@ export function linkView(res, { shop, state }) {
 
   const closedNote = open
     ? ''
-    : html`<div class="alert alert-warn set-closed" role="alert">
+    : html`<div class="alert alert-warn lk-closed" role="alert">
         ${icon('alert')}
         <span><b>Your link is closed right now.</b> ${state === 'paused'
-          ? html`Your account is paused, so customers who open it see that the shop is not taking online orders. <a href="/shop/support">Contact support</a>.`
-          : html`Your plan is not active, so customers who open it see that the shop is not taking online orders. <a href="/shop/billing">Renew your plan</a> to switch it back on.`}</span>
+          ? html`Customers who open it see that you are not taking online orders. <a href="/shop/support">Contact us</a>.`
+          : html`Customers who open it see that you are not taking online orders. <a href="/shop/billing">Renew your plan</a> to open it again.`}</span>
       </div>`;
 
-  const hero = html`<section class="card set-hero" aria-labelledby="set-link-title">
-    <div class="set-hero-top">
-      <h2 id="set-link-title" class="set-hero-label">${icon('link')}<span>Customer order link</span></h2>
+  const hero = html`<section class="card lk-hero" aria-labelledby="lk-title">
+    <div class="lk-hero-top">
       <span class="pill ${open ? 'pill-shop-active' : 'pill-shop-expired'}">${open ? 'Taking orders' : 'Closed'}</span>
     </div>
-    <p class="set-link" id="set-link-text">${prettyLink(shop)}</p>
-    <p class="set-hero-note">Customers open this link, upload files, pick size and copies, and get an order number – no app or login.</p>
-    <div class="set-hero-actions">
-      <button type="button" class="btn btn-primary btn-lg" data-copy="${url}" data-copy-msg="Link copied">${icon('copy')}<span>Copy link</span></button>
-      <button type="button" class="btn btn-secondary btn-lg" data-share data-share-url="${url}" data-share-title="${shop.name} – send your print files" data-share-text="Send your print files to ${shop.name}">${icon('share')}<span>Share</span></button>
-      <a class="btn btn-ghost btn-lg" href="${url}" target="_blank" rel="noopener">${icon('eye')}<span>Open</span></a>
+    <h2 id="lk-title" class="lk-hero-title">This link is your online counter</h2>
+    <p class="lk-hero-text">Customers open it on their phone, send their files and get an order number. The order comes straight to your <a href="/shop">Orders</a> – with a sound.</p>
+    <a class="lk-url" href="${url}" target="_blank" rel="noopener" title="Open your order page">
+      <span class="lk-url-host">${shortUrl(config.baseUrl)}</span><span class="lk-url-path">${shopPath(shop)}</span>
+    </a>
+    <div class="lk-actions">
+      <a class="btn btn-wa btn-lg" href="${waHref}" target="_blank" rel="noopener">${icon('whatsapp')}<span>Share on WhatsApp</span></a>
+      <button type="button" class="btn btn-secondary btn-lg" data-copy="${url}" data-copy-msg="Link copied">${icon('copy')}<span>Copy link</span></button>
+      <button type="button" class="btn btn-secondary btn-lg" data-share data-share-url="${url}" data-share-title="${shop.name} – send your print files" data-share-text="Send your print files to ${shop.name}">${icon('share')}<span>More apps</span></button>
     </div>
     ${closedNote}
+    <ol class="lk-how" aria-label="How customers order">
+      <li><span class="lk-how-n">1</span><span><b>Customer opens the link</b><small>or scans your QR code</small></span></li>
+      <li><span class="lk-how-n">2</span><span><b>Sends the files</b><small>picks size and copies</small></span></li>
+      <li><span class="lk-how-n">3</span><span><b>You get the order</b><small>with its own P-number</small></span></li>
+    </ol>
   </section>`;
 
-  const qrCard = html`<section class="card set-qr" aria-labelledby="set-qr-title">
-    <div class="set-qr-body">
-      <h2 id="set-qr-title">QR code</h2>
-      <p class="muted">Customers scan it with their phone camera to open your order page.</p>
-      <figure class="set-qr-figure">
-        <div class="set-qr-tile">
-          <img src="/shop/qr.svg" alt="QR code that opens ${shortUrl(url)}" width="280" height="280">
-        </div>
-        <figcaption>
-          <b>${shop.name}</b>
-          <span class="mono">${shortUrl(url)}</span>
-        </figcaption>
-      </figure>
-      <div class="btn-row-stack">
-        <a class="btn btn-primary btn-block" href="/shop/poster">${icon('printer')}<span>Print counter poster</span></a>
-        <a class="btn btn-secondary btn-block" href="/shop/qr.png" download="${shop.slug}-qr.png">${icon('download')}<span>Download QR (PNG)</span></a>
+  const qrCard = html`<section class="card lk-qr" aria-labelledby="lk-qr-title">
+    <h2 id="lk-qr-title">QR code for your counter</h2>
+    <p class="muted">Print it and keep it where customers wait. They scan it with the phone camera – no app needed.</p>
+    <figure class="lk-qr-figure">
+      <div class="lk-qr-tile">
+        <img src="/shop/qr.svg" alt="QR code that opens ${shortUrl(url)}" width="240" height="240">
       </div>
+      <figcaption><b>${shop.name}</b></figcaption>
+    </figure>
+    <div class="btn-row-stack">
+      <a class="btn btn-primary btn-lg btn-block" href="/shop/poster">${icon('printer')}<span>Print counter poster</span></a>
+      <a class="btn btn-secondary btn-block" href="/shop/qr.png" download="${shop.slug}-qr.png">${icon('download')}<span>Download QR image</span></a>
     </div>
   </section>`;
 
-  const share = html`<section class="card set-share" aria-labelledby="set-share-title">
-    <div class="sh-card-head"><h2 id="set-share-title">Share with customers</h2></div>
-    <div class="sh-card-body stack">
-      <a class="btn btn-wa btn-lg btn-block" href="${waHref}" target="_blank" rel="noopener">${icon('whatsapp')}<span>Share on WhatsApp</span></a>
-      ${copyBlock({ id: 'set-msg-status', label: 'WhatsApp / Instagram status', text: texts.status, rows: 4, hint: 'Paste it as a status or send it to regular customers.' })}
-      ${copyBlock({ id: 'set-msg-bio', label: 'Instagram bio line', text: texts.bio, rows: 2, hint: 'Also add the link itself in the "Links" field of your Instagram profile.' })}
+  const messages = html`<details class="card fold lk-fold">
+    <summary><span class="fold-ic">${shopIcon('megaphone')}</span><span class="fold-title"><b>Ready-made messages</b><small>Copy for WhatsApp status and Instagram bio</small></span></summary>
+    <div class="fold-body stack">
+      ${copyBlock({ id: 'lk-msg-status', label: 'WhatsApp / Instagram status', text: texts.status, rows: 4, hint: 'Post it as a status or send it to regular customers.' })}
+      ${copyBlock({ id: 'lk-msg-bio', label: 'Instagram bio line', text: texts.bio, rows: 2, hint: 'Also add the link itself in the "Links" field of your Instagram profile.' })}
     </div>
-  </section>`;
+  </details>`;
 
   const tips = [
-    ['whatsapp', 'WhatsApp Business', 'Add the link to your business profile and to a quick reply like /order.', 'wa'],
-    ['sparkle', 'Instagram', 'Put it in your bio link and pin a post or story about it.', 'ig'],
-    ['store', 'Google Business Profile', 'Add it as your website or order link, so people find it on Maps.', 'gb'],
+    ['whatsapp', 'WhatsApp Business', 'Add the link to your business profile and a quick reply like /order.', 'wa'],
+    ['sparkle', 'Instagram', 'Put it in your bio and pin a story about it.', 'ig'],
+    ['store', 'Google Maps', 'Add it as your website in your Google Business Profile.', 'gb'],
     ['printer', 'At the counter', 'Print the QR poster and keep it at the billing desk.', 'ct'],
   ];
-  const tipsCard = html`<section class="card set-tips" aria-labelledby="set-tips-title">
-    <div class="sh-card-head"><h2 id="set-tips-title">Where to put your link</h2></div>
-    <ul class="set-tip-list">
-      ${tips.map(([ic, title, text, cls]) => html`<li><span class="set-tip-icon set-tip-${cls}">${icon(ic)}</span><span><b>${title}</b><span class="muted">${text}</span></span></li>`)}
-    </ul>
-  </section>`;
+  const tipsCard = html`<details class="card fold lk-fold">
+    <summary><span class="fold-ic">${icon('sparkle')}</span><span class="fold-title"><b>Where to put your link</b><small>4 places that bring the most orders</small></span></summary>
+    <div class="fold-body">
+      <ul class="lk-tips">
+        ${tips.map(([ic, title, text, cls]) => html`<li><span class="lk-tip-ic lk-tip-${cls}">${icon(ic)}</span><span><b>${title}</b><span class="muted">${text}</span></span></li>`)}
+      </ul>
+    </div>
+  </details>`;
 
-  const install = html`<section class="card set-install" aria-labelledby="set-install-title">
-    <div class="set-install-head">
-      <span class="set-install-icon">${icon('install')}</span>
-      <div>
-        <h2 id="set-install-title">Install Brighton Print on your phone</h2>
-        <p class="muted">Open your orders in one tap from the home screen, like an app – and hear new-order alerts.</p>
-      </div>
+  const install = html`<details class="card fold lk-fold">
+    <summary><span class="fold-ic">${icon('install')}</span><span class="fold-title"><b>Put Brighton Print on your phone</b><small>Open orders in one tap and hear new-order sounds</small></span></summary>
+    <div class="fold-body stack-sm">
+      <button type="button" class="btn btn-primary btn-block" data-install hidden>${icon('install')}<span>Install app</span></button>
+      <p class="lk-install-hint" data-ios-hint hidden><b>iPhone / iPad:</b> in Safari tap Share ${icon('share')} → <b>Add to Home Screen</b>.</p>
+      <p class="lk-install-hint"><b>Android:</b> in Chrome tap <b>⋮</b> → <b>Install app</b> or <b>Add to Home screen</b>.</p>
     </div>
-    <button type="button" class="btn btn-primary btn-block" data-install hidden>${icon('install')}<span>Install app</span></button>
-    <div class="set-install-hint" data-ios-hint hidden>
-      <b>iPhone / iPad</b>
-      <span>In Safari, tap the Share button ${icon('share')} and choose <b>Add to Home Screen</b>.</span>
-    </div>
-    <div class="set-install-hint">
-      <b>Android</b>
-      <span>In Chrome, tap the <b>⋮</b> menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</span>
-    </div>
-  </section>`;
+  </details>`;
 
   return {
-    title: 'Your order link',
+    title: 'Share your link',
     variant: 'shop',
     active: 'link',
     brandShop: shop,
     scripts: SCRIPTS,
-    body: html`<div class="container">
+    body: html`<div class="container lk-page">
       <div class="page-head">
         <div>
-          <span class="eyebrow">${shopIcon('qr')} Link &amp; QR</span>
-          <h1>Your order link</h1>
-          <p>Share it anywhere. Every order lands in your dashboard with its own order number.</p>
+          <h1>Share your order link</h1>
+          <p>More people with your link = more orders in your phone.</p>
         </div>
       </div>
-      <div class="set-link-grid">
-        <div class="set-col">${hero}${share}${tipsCard}</div>
-        <div class="set-col">${qrCard}${install}</div>
+      <div class="lk-grid">
+        <div class="lk-col">${hero}${messages}${tipsCard}${install}</div>
+        <div class="lk-col">${qrCard}</div>
       </div>
     </div>`,
   };

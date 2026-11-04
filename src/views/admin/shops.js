@@ -7,6 +7,9 @@ import { SHOP_FILTERS, adminIcon, customerLink, cycleName, demoTag, listHref, nu
 
 // /admin/shops – every shop (live and demo) with filters and search.
 
+// Filter chips that mean "someone should follow up" get a red count.
+const ATTENTION = new Set(['expiring', 'expired', 'pending']);
+
 function shopCell(s) {
   const link = customerLink(s);
   return html`<div class="adm-shop">
@@ -54,7 +57,7 @@ function shopRow(s, today) {
       <span>${s.last_order_at ? `Order ${timeAgo(s.last_order_at)}` : 'No orders yet'}</span>
       <span class="adm-sub">Joined ${formatDate(s.created_at)}</span>
     </div></td>
-    <td class="adm-td-actions"><a class="btn btn-secondary btn-sm adm-manage" href="/admin/shops/${s.id}" title="Manage ${s.name}"><span class="adm-manage-label">Manage</span><span class="sr-only"> ${s.name}</span>${adminIcon('chevron')}</a></td>
+    <td class="adm-td-actions"><a class="btn btn-soft btn-sm adm-manage" href="/admin/shops/${s.id}" title="Manage ${s.name}"><span class="adm-manage-label">Manage</span><span class="sr-only"> ${s.name}</span>${adminIcon('chevron')}</a></td>
   </tr>`;
 }
 
@@ -82,15 +85,16 @@ export function shopsView(res, { shops, counts, q, status, today }) {
           <label class="sr-only" for="adm-q">Search shops</label>
           <input type="search" id="adm-q" name="q" value="${q}" placeholder="Name, link, city, mobile or email" maxlength="80" autocomplete="off" enterkeyhint="search">
         </div>
-        <button class="btn btn-secondary" type="submit">Search</button>
+        <button class="btn btn-primary" type="submit">Search</button>
       </form>
     </div>
 
     <nav class="adm-chips" aria-label="Filter shops">
-      ${SHOP_FILTERS.map(
-        (f) =>
-          html`<a href="${listHref({ q, status: f.key })}" class="adm-chip${f.key === status ? ' is-on' : ''}"${f.key === status ? raw(' aria-current="page"') : ''}>${f.label}<span class="adm-chip-n">${num(counts[f.key] || 0)}</span></a>`
-      )}
+      ${SHOP_FILTERS.map((f) => {
+        const n = counts[f.key] || 0;
+        const attn = ATTENTION.has(f.key) && n > 0;
+        return html`<a href="${listHref({ q, status: f.key })}" class="adm-chip${f.key === status ? ' is-on' : ''}${attn ? ' is-attn' : ''}"${f.key === status ? raw(' aria-current="page"') : ''}>${f.label}<span class="adm-chip-n">${num(n)}</span>${attn ? html`<span class="sr-only"> – needs follow-up</span>` : ''}</a>`;
+      })}
     </nav>
     ${q
       ? html`<p class="adm-searchnote">Showing results for <b>“${q}”</b> in ${current.label.toLowerCase()} shops · <a href="${listHref({ status })}">Clear search</a></p>`

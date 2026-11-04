@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { html } from '../lib/html.js';
-import { db } from '../db.js';
+import { db, now } from '../db.js';
 import { clean, cleanLine, clampInt, flash, startOfTodayIso, ymd } from '../lib/util.js';
 import { STATUSES, STATUS_LABEL, TABS } from '../lib/status.js';
 import { actionLimiter } from '../lib/security.js';
 import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/uploads.js';
 import { isSampleShop, shopFeatures, storageCapBytes } from '../services/billing.js';
-import { listShopNotifications } from '../services/notifications.js';
-import { shopCounts, storageUsed } from '../services/shops.js';
+import { unreadShopCount } from '../services/notifications.js';
+import { shopCounts, storageUsed, todoCount } from '../services/shops.js';
 import {
   reprintOrder,
   getOrderByNo,
@@ -36,6 +36,9 @@ const router = Router();
 const PAGE_SIZE = 50;
 const NO = ':no(\\d{1,9})';
 const SCRIPTS = ['/js/shop.js'];
+
+// Opening an order marks its notifications (new order, customer OK, changes …) as read.
+const qReadOrderNotes = db.prepare("UPDATE notifications SET read_at = ? WHERE audience = 'shop' AND shop_id = ? AND link = ? AND read_at IS NULL");
 
 const back = (order, hash = '') => `/shop/orders/${order.order_no}${hash}`;
 
@@ -90,7 +93,6 @@ router.get('/', (req, res) => {
       latestId: latestOrderId(shop.id),
       formUrl: orderFormUrl(shop),
       monthCount: ordersThisMonth(shop.id),
-      updates: listShopNotifications(shop.id, 20).filter((n) => !n.read_at).slice(0, 3),
       isSample: isSampleShop(shop),
     }),
   });
@@ -101,6 +103,7 @@ router.get(`/orders/${NO}`, loadOrder, (req, res) => {
   const shop = req.shop;
   const order = req.order;
   const files = orderFiles(order);
+  if (qReadOrderNotes.run(now(), shop.id, `/shop/orders/${order.order_no}`).changes) res.locals.shopUnread = unreadShopCount(shop.id);
   render(res, {
     title: `Order P-${order.order_no}`,
     variant: 'shop',
@@ -124,11 +127,11 @@ router.get(`/orders/${NO}`, loadOrder, (req, res) => {
 
 // ---------- status change ----------
 const DONE_TEXT = {
-  approved: 'marked as approved.',
-  changes_requested: 'marked as changes requested.',
+  approved: 'marked as customer OK.',
+  changes_requested: 'marked as needs changes.',
   printing: 'is now printing.',
   ready: 'is ready.',
-  delivered: 'delivered. Nice work!',
+  delivered: 'handed over. Nice work!',
   cancelled: 'cancelled.',
   new: 'reopened.',
 };
@@ -150,7 +153,7 @@ router.post(`/orders/${NO}/status`, loadOrder, (req, res) => {
   try {
     setStatus(req.shop, order, to, { note });
     flash(req, 'success', `Order P-${order.order_no} ${DONE_TEXT[to] || `is now ${STATUS_LABEL[to]}.`}`);
-    if (to === 'ready') flash(req, 'info', 'Now tap “Send ready message” to tell the customer on WhatsApp.');
+    if (to === 'ready') flash(req, 'info', 'Now tap the green WhatsApp button to tell the customer it is ready.');
   } catch (err) {
     flash(req, 'error', err.message || 'Could not update the order. Please try again.');
   }
@@ -195,12 +198,12 @@ router.post(
     }
     const file = req.files[0];
     if (!file) {
-      flash(req, 'error', 'Choose a proof file.');
+      flash(req, 'error', 'Choose the design file to send.');
       return res.redirect(303, back(order, '#proof'));
     }
     try {
       addProof(req.shop, order, file, clean(req.body.note, 500));
-      flash(req, 'success', 'Proof sent – now tap “Send proof on WhatsApp”.');
+      flash(req, 'success', 'Preview sent – now tap “Send preview on WhatsApp” so the customer sees it.');
     } catch (err) {
       discardUploads(req);
       flash(req, 'error', err.message || 'Could not save the proof. Please try again.');
@@ -237,9 +240,9 @@ router.post(`/orders/${NO}/email`, actionLimiter, loadOrder, async (req, res) =>
     if (shop.is_demo) flash(req, 'info', 'Emails are switched off in the demo.');
     else if (!mailEnabled()) flash(req, 'error', 'Email is not set up on this server.');
     else if (!order.customer_email) flash(req, 'error', 'This customer did not give an email address.');
-    else if (kind === 'proof' && !latestProof(order)) flash(req, 'error', 'Upload a proof first.');
+    else if (kind === 'proof' && !latestProof(order)) flash(req, 'error', 'Send a design preview first.');
     else if (await emailCustomer(shop, order, kind)) {
-      addEvent(order.id, { actor: 'shop', type: 'email', note: `${kind === 'proof' ? 'Proof link' : 'Ready message'} emailed to ${order.customer_email}` });
+      addEvent(order.id, { actor: 'shop', type: 'email', note: `${kind === 'proof' ? 'Design preview link' : 'Ready message'} emailed to ${order.customer_email}` });
       flash(req, 'success', `Email sent to ${order.customer_email}.`);
     } else flash(req, 'error', 'The email could not be sent. Please use WhatsApp instead.');
   } catch (err) {
@@ -268,12 +271,15 @@ router.get('/api/poll', (req, res) => {
           at: o.created_at,
         }))
       : [],
+    todo: todoCount(shopId),
+    unread: unreadShopCount(shopId),
     counts: {
       newToday: c.newToday || 0,
       new: c.new || 0,
       proof_sent: c.proof_sent || 0,
       changes_requested: c.changes_requested || 0,
       printing: c.printing || 0,
+      approved: c.approved || 0,
       ready: c.ready || 0,
     },
   });

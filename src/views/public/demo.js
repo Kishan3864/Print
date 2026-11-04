@@ -8,8 +8,8 @@ const DM_URL = `https://ig.me/m/${config.instagram}`;
 const STEPS = [
   ['Place an order as a customer.', 'Upload a small file, pick size and quantity, note the order number.'],
   ['See it in the dashboard.', 'Open the shop dashboard. The new order is at the top.'],
-  ['Send a proof.', 'Open the order and upload a proof file.'],
-  ['Approve it and mark ready.', 'Approve the proof on the customer page, then mark the order ready in the dashboard.'],
+  ['Send a design preview.', 'Open the order and send the design for the customer’s OK.'],
+  ['Tap OK and mark ready.', 'Tap OK on the customer page, then mark the order ready in the dashboard.'],
 ];
 
 const OWN_DEMO = [
@@ -65,7 +65,7 @@ export function demoPage(res, { realShop = null, ownDemo = null } = {}) {
       <div class="dm-card">
         <span class="dm-icon">${icon('store')}</span>
         <h2>Open the sample shop dashboard</h2>
-        <p>See the shop side: new orders, send a proof, mark ready, WhatsApp the customer.</p>
+        <p>See the shop side: new orders, send a design preview, mark ready, WhatsApp the customer.</p>
         ${realShop || ownDemo
           ? html`<p class="dm-note">${icon('info')}<span>You are logged in as ${(realShop || ownDemo).name}. Opening the sample shop logs you out of it.</span></p>`
           : ''}

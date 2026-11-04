@@ -123,13 +123,14 @@ function hero(shop, state, { counts, today }) {
 function jumpNav(shop, hasNotify) {
   const sample = isSampleShop(shop);
   const links = [
-    ['#actions', 'Actions', !sample],
+    ['#actions', 'Account', true],
     ['#subscription', 'Payments', !sample],
     ['#support', 'Support', true],
-    ['#notify', 'Notify', hasNotify],
+    ['#note', 'Note', true],
+    ['#notify', 'Message', hasNotify],
     ['#usage', 'Usage', true],
     ['#details', 'Details', true],
-    ['#note', 'Note', true],
+    ['#access', 'Login', true],
   ].filter((l) => l[2]);
   return html`<nav class="adm-jumps" aria-label="On this page">${links.map(([href, label]) => html`<a href="${href}">${label}</a>`)}</nav>`;
 }
@@ -168,11 +169,11 @@ function subscriptionCard(res, shop, payments) {
       ? paymentsTable(payments)
       : html`<p class="adm-panel-empty adm-nopay">${adminIcon('rupee')}<span>${shop.is_demo ? 'No payments yet – this shop is still a demo.' : 'No payments yet.'}</span></p>`}
     ${filled(form)
-      ? html`<div class="adm-embed adm-embed-pay">
-          <h3 class="adm-form-title">${shop.is_demo ? 'Record a payment to go live' : 'Record a payment'}</h3>
-          <p class="hint adm-embed-lead">Money received on UPI, cash or bank transfer. The plan is extended right away${shop.is_demo ? ' and the demo goes live' : ''}.</p>
+      ? html`<details class="adm-embed adm-embed-pay"${paid.length ? '' : html` open`}>
+          <summary class="adm-payrecord-sum">${icon('plus')}<span>${shop.is_demo ? 'Record a payment to go live' : 'Record a payment (UPI / cash / bank)'}</span></summary>
+          <p class="hint adm-embed-lead">Money you received outside PayU. The plan is extended right away${shop.is_demo ? ' and the demo goes live' : ''}.</p>
           ${form}
-        </div>`
+        </details>`
       : ''}
   </section>`;
 }
@@ -197,12 +198,22 @@ function supportCard(tickets) {
   </section>`;
 }
 
+// ---------- folded sections (secondary info stays one tap away) ----------
+function fold({ id, ic, title, sub = '', open = false, body }) {
+  return html`<details class="card fold adm-fold" id="${id}"${open ? html` open` : ''}>
+    <summary><span class="fold-ic">${ic}</span><span class="fold-title"><b>${title}</b>${sub ? html`<small>${sub}</small>` : ''}</span></summary>
+    <div class="fold-body">${body}</div>
+  </details>`;
+}
+
 // ---------- usage ----------
 function usageCard({ counts, storage, cap, liveFiles, recent }) {
-  return html`<section class="card" id="usage" aria-labelledby="usage-h">
-    <div class="card-head"><h2 id="usage-h">Usage</h2></div>
-    <div class="card-body">
-      <dl class="adm-mini">
+  return fold({
+    id: 'usage',
+    ic: icon('orders'),
+    title: 'Usage & recent orders',
+    sub: `${plural(counts.total || 0, 'order')} · ${formatBytes(storage)} stored`,
+    body: html`<dl class="adm-mini">
         <div><dt>Orders total</dt><dd>${num(counts.total)}</dd></div>
         <div><dt>Orders today</dt><dd>${num(counts.newToday)}</dd></div>
         <div><dt>Files stored</dt><dd>${num(liveFiles)}</dd></div>
@@ -218,23 +229,22 @@ function usageCard({ counts, storage, cap, liveFiles, recent }) {
       <ul class="adm-status-list">
         ${STATUSES.map((st) => html`<li${counts[st] ? '' : html` class="is-zero"`}>${statusPill(st)}<b>${num(counts[st] || 0)}</b></li>`)}
       </ul>
-    </div>
-    <div class="adm-subhead"><h3>Recent orders</h3><span class="adm-sub">Last 10 · customer details hidden</span></div>
-    ${recent.length
-      ? html`<ul class="order-list adm-orders">
-          ${recent.map(
-            (o) => html`<li class="order-row">
-              <span class="order-no">P-${o.order_no}</span>
-              <div class="order-main">
-                <div class="order-title adm-order-title">${statusPill(o.status)}${o.is_sample ? html`<span class="pill pill-sample">Sample</span>` : ''}</div>
-                <div class="order-meta">${plural(o.file_count, 'file')} · ${formatDateTime(o.created_at)}</div>
-              </div>
-              <div class="order-side"><time class="order-time" datetime="${o.created_at}">${timeAgo(o.created_at)}</time></div>
-            </li>`
-          )}
-        </ul>`
-      : html`<p class="adm-panel-empty adm-noorders">${icon('orders')}<span>No orders yet. They show up here once customers use this shop’s link.</span></p>`}
-  </section>`;
+      <h3 class="section-title adm-usage-sub">Last 10 orders <span class="adm-sub">· customer details hidden</span></h3>
+      ${recent.length
+        ? html`<ul class="order-list adm-orders">
+            ${recent.map(
+              (o) => html`<li class="order-row">
+                <span class="order-no">P-${o.order_no}</span>
+                <div class="order-main">
+                  <div class="order-title adm-order-title">${statusPill(o.status)}${o.is_sample ? html`<span class="pill pill-sample">Sample</span>` : ''}</div>
+                  <div class="order-meta">${plural(o.file_count, 'file')} · ${formatDateTime(o.created_at)}</div>
+                </div>
+                <div class="order-side"><time class="order-time" datetime="${o.created_at}">${timeAgo(o.created_at)}</time></div>
+              </li>`
+            )}
+          </ul>`
+        : html`<p class="adm-panel-empty adm-noorders">${icon('orders')}<span>No orders yet. They show up here once customers use this shop’s link.</span></p>`}`,
+  });
 }
 
 function detailsCard(shop) {
@@ -242,10 +252,12 @@ function detailsCard(shop) {
   const link = customerLink(shop);
   const color = isHexColor(shop.brand_color) ? shop.brand_color : '';
   const row = (label, value) => html`<div><dt>${label}</dt><dd>${value}</dd></div>`;
-  return html`<section class="card" id="details" aria-labelledby="details-h">
-    <div class="card-head"><h2 id="details-h">Shop details</h2></div>
-    <div class="card-body">
-      <label class="adm-label" for="adm-link">Customer link</label>
+  return fold({
+    id: 'details',
+    ic: icon('store'),
+    title: 'Shop details',
+    sub: 'Contact, address, branding, dates',
+    body: html`<label class="adm-label" for="adm-link">Customer order link</label>
       <div class="copy-field adm-copy adm-linkfield">
         <input type="text" id="adm-link" value="${link.href}" readonly>
         <button type="button" class="btn btn-secondary" data-copy="${link.href}" data-copy-msg="Link copied">${icon('copy')}<span>Copy</span></button>
@@ -265,7 +277,7 @@ function detailsCard(shop) {
         ${row(
           'Brand colour',
           color
-            ? html`<span class="adm-color"><svg class="adm-swatch" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="${color}"/></svg><span class="mono">${color}</span></span>`
+            ? html`<span class="adm-color"><svg class="adm-swatch" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><rect width="16" height="16" rx="4" fill="${color}"/></svg><span>${color}</span></span>`
             : '—'
         )}
         ${row('Logo', shop.logo_file ? 'Uploaded' : 'Not uploaded')}
@@ -273,10 +285,10 @@ function detailsCard(shop) {
         ${row('Registered', `${formatDate(shop.created_at)}, ${formatTime(shop.created_at)}`)}
         ${row('Went live', shop.went_live_at ? formatDate(shop.went_live_at) : shop.approved_at && !shop.is_demo ? formatDate(shop.approved_at) : 'Not yet')}
         ${row('Last login', shop.last_login_at ? html`${timeAgo(shop.last_login_at)} <span class="adm-sub">(${formatDateTime(shop.last_login_at)})</span>` : 'Never')}
-      </dl>
-    </div>
-  </section>`;
+      </dl>`,
+  });
 }
+
 
 // ---------- account actions ----------
 const dateInput = (id, value, min, max) => html`<input type="date" id="${id}" name="paid_until" value="${value}" min="${min}" max="${max}" required>`;
@@ -386,7 +398,7 @@ function actionsCard(res, shop, state, today) {
     main = activateForm(res, shop, state, today);
   }
   return html`<section class="card adm-actions" id="actions" aria-labelledby="actions-h">
-    <div class="card-head"><h2 id="actions-h">Account</h2>${shopStatePill(state)}</div>
+    <div class="card-head"><h2 id="actions-h">What to do with this shop</h2>${shopStatePill(state)}</div>
     <div class="card-body">
       ${stateNote(shop, state)}
       ${main}
@@ -396,17 +408,16 @@ function actionsCard(res, shop, state, today) {
 }
 
 function notifyCard(form) {
-  return html`<section class="card" id="notify" aria-labelledby="notify-h">
-    <div class="card-head"><h2 id="notify-h">Send a message</h2><span class="adm-sub">Shows in their notifications</span></div>
-    <div class="card-body adm-embed">${form}</div>
-  </section>`;
+  return fold({ id: 'notify', ic: icon('bell'), title: 'Send a message', sub: 'Shows in their notifications', body: html`<div class="adm-embed">${form}</div>` });
 }
 
 function accessCard(res, shop) {
-  return html`<section class="card" id="access" aria-labelledby="access-h">
-    <div class="card-head"><h2 id="access-h">Login & password</h2></div>
-    <div class="card-body">
-      <dl class="kv adm-kv">
+  return fold({
+    id: 'access',
+    ic: adminIcon('key'),
+    title: 'Login & password',
+    sub: shop.last_login_at ? `Last login ${timeAgo(shop.last_login_at)}` : 'Never logged in',
+    body: html`<dl class="kv adm-kv">
         <div><dt>Login email</dt><dd>${shop.email}</dd></div>
         <div><dt>Last login</dt><dd>${shop.last_login_at ? timeAgo(shop.last_login_at) : 'Never'}</dd></div>
       </dl>
@@ -416,21 +427,25 @@ function accessCard(res, shop) {
             ${csrfField(res)}
             <button class="btn btn-secondary btn-block" type="submit">${adminIcon('key')}<span>Reset password</span></button>
             <p class="hint mt-1">You will see the new password once, to send to the owner.</p>
-          </form>`}
-    </div>
-  </section>`;
+          </form>`}`,
+  });
 }
 
 function noteCard(res, shop) {
-  return html`<section class="card" id="note" aria-labelledby="note-h">
-    <div class="card-head"><h2 id="note-h">Admin note</h2><span class="adm-sub">Only you see this</span></div>
-    <form class="card-body adm-note" method="post" action="/admin/shops/${shop.id}/note">
+  const has = filled(shop.admin_note);
+  return fold({
+    id: 'note',
+    ic: adminIcon('note'),
+    title: 'Admin note',
+    sub: has ? 'Only you see this' : 'Only you see this · empty',
+    open: has,
+    body: html`<form class="adm-note" method="post" action="/admin/shops/${shop.id}/note">
       ${csrfField(res)}
       <label class="sr-only" for="adm-note">Admin note</label>
       <textarea id="adm-note" name="note" rows="4" maxlength="2000" placeholder="Payment details, follow-ups, anything to remember…">${shop.admin_note}</textarea>
       <div class="form-actions"><button class="btn btn-secondary btn-sm" type="submit">${icon('check')}<span>Save note</span></button></div>
-    </form>
-  </section>`;
+    </form>`,
+  });
 }
 
 export function shopView(res, { shop, state, counts, storage, cap, liveFiles, recent, payments, tickets, today, reveal }) {
@@ -444,16 +459,16 @@ export function shopView(res, { shop, state, counts, storage, cap, liveFiles, re
     ${jumpNav(shop, hasNotify)}
     <div class="adm-split">
       <div class="adm-col adm-main">
+        ${actionsCard(res, shop, state, today)}
         ${subscriptionCard(res, shop, payments)}
         ${supportCard(tickets)}
+      </div>
+      <aside class="adm-col adm-side" aria-label="More about this shop">
+        ${noteCard(res, shop)}
+        ${hasNotify ? notifyCard(notifyForm) : ''}
         ${usageCard({ counts, storage, cap, liveFiles, recent })}
         ${detailsCard(shop)}
-      </div>
-      <aside class="adm-col adm-side" aria-label="Admin actions">
-        ${actionsCard(res, shop, state, today)}
-        ${hasNotify ? notifyCard(notifyForm) : ''}
         ${accessCard(res, shop)}
-        ${noteCard(res, shop)}
       </aside>
     </div>
   </div>`;

@@ -54,15 +54,31 @@
   // ---------- badge, title, dashboard bar ----------
   var baseTitle = document.title.replace(/^\(\d+\+?\)\s+/, '');
 
+  // Count bubbles in the header + tab bar: data-badge="todo" (orders waiting on the shop), "alerts" (unread).
+  function badgeValue(key) {
+    var el = document.querySelector('[data-badge="' + key + '"]');
+    return el && !el.hidden ? num(el.textContent.replace('+', '')) || 0 : 0;
+  }
+  function setBadge(key, n) {
+    var els = document.querySelectorAll('[data-badge="' + key + '"]');
+    for (var i = 0; i < els.length; i++) {
+      els[i].textContent = n ? (n > 99 ? '99+' : String(n)) : '';
+      els[i].hidden = !n;
+    }
+  }
+  // Tab title "(3) Orders" and the app-icon badge (installed app) show everything that waits.
+  function syncTotals() {
+    var total = badgeValue('todo') + badgeValue('alerts');
+    document.title = total ? '(' + (total > 99 ? '99+' : total) + ') ' + baseTitle : baseTitle;
+    try {
+      if (total && navigator.setAppBadge) navigator.setAppBadge(total).catch(function () {});
+      else if (!total && navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {});
+    } catch (e) {}
+  }
+  syncTotals();
+
   function setCount(n) {
     var label = n >= 20 ? '20+' : String(n);
-    var badges = document.querySelectorAll('[data-new-badge]');
-    for (var i = 0; i < badges.length; i++) {
-      badges[i].textContent = n ? label : '';
-      badges[i].hidden = !n;
-      if (n) badges[i].setAttribute('title', label + ' new order' + (n === 1 ? '' : 's'));
-    }
-    document.title = n ? '(' + label + ') ' + baseTitle : baseTitle;
     if (!live) return;
     var bar = document.querySelector('[data-new-bar]');
     if (!bar) return;
@@ -159,6 +175,13 @@
     else PD.toast(fresh.length + ' new orders – latest #' + o.no + who, { href: '/shop', linkText: 'View', duration: 10000 });
   }
 
+  // Customer said OK, asked for changes, support replied …: one soft chime + a toast.
+  var lastUnread = badgeValue('alerts');
+  function alertNew(n) {
+    chime();
+    if (typeof PD.toast === 'function') PD.toast(n === 1 ? 'You have a new alert' : n + ' new alerts', { href: '/shop/notifications', linkText: 'See', duration: 8000 });
+  }
+
   // ---------- polling ----------
   var stopped = false;
   var busy = false;
@@ -186,8 +209,13 @@
         return;
       }
     }
+    if (typeof d.todo === 'number') setBadge('todo', d.todo);
+    if (typeof d.unread === 'number') setBadge('alerts', d.unread);
+    syncTotals();
+    var unread = typeof d.unread === 'number' ? d.unread : lastUnread;
     if (seen == null) {
       seen = alerted = latestId; // first visit on this browser: baseline only, no alert
+      lastUnread = unread;
       save();
       return;
     }
@@ -211,6 +239,8 @@
     setCount(unseen.length);
     setStats(d.counts);
     if (fresh.length) announce(fresh);
+    else if (unread > lastUnread) alertNew(unread - lastUnread);
+    lastUnread = unread;
     alerted = Math.max(alerted, latestId);
     sset('pd_alerted_' + shopId, alerted);
   }
@@ -253,6 +283,11 @@
       if (document.visibilityState === 'visible' && Date.now() - lastPoll > 5000) poll();
     });
     window.addEventListener('online', poll);
+    // live.js just re-rendered the page after a change: check right away (chime without the 30 s wait).
+    document.addEventListener('pd:live-updated', function () {
+      syncTotals();
+      if (Date.now() - lastPoll > 1500) poll();
+    });
   }
 
   // ---------- relative times ("5 min ago") stay fresh on long-open pages ----------

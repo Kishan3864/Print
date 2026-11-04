@@ -21,7 +21,7 @@ export function receiptView({ shop, payment }) {
     scripts: ['/js/shop.js', '/js/billing.js'],
     body: html`<div class="container-mid bl-receipt-wrap">
       <div class="bl-receipt-bar">
-        <a class="btn btn-ghost btn-sm" href="/shop/billing">${icon('arrowLeft')}<span>Plan &amp; billing</span></a>
+        <a class="btn btn-ghost btn-sm" href="/shop/billing">${icon('arrowLeft')}<span>Plan &amp; payments</span></a>
         <button class="btn btn-primary btn-sm" type="button" data-print>${icon('printer')}<span>Print / save PDF</span></button>
       </div>
       <article class="card bl-receipt" aria-labelledby="bl-receipt-title">

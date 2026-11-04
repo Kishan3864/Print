@@ -22,7 +22,7 @@ import { billingView } from '../views/shop-billing/billing.js';
 import { csrfField, icon } from '../views/components.js';
 import { receiptView } from '../views/shop-billing/receipt.js';
 
-// Shop area: "Plan & billing" – plan picker, PayU checkout, waiting screen, receipts.
+// Shop area: "Plan & payments" (inside Account) – plan picker, PayU checkout, waiting screen, receipts.
 // Mounted under the /shop gate (always open, also for pending/expired shops).
 
 const router = Router();
@@ -228,10 +228,10 @@ router.get('/billing/receipt/:id(\\d+)', (req, res) => {
     return messagePage(res, {
       status: 404,
       title: 'Receipt not found',
-      text: 'This receipt does not exist. You can find all your receipts under Plan & billing.',
+      text: 'This receipt does not exist. All your receipts are in Account → Plan & payments.',
       variant: 'shop',
       iconName: 'search',
-      action: html`<a class="btn btn-primary" href="${BILLING}">Plan &amp; billing</a>`,
+      action: html`<a class="btn btn-primary" href="${BILLING}">Plan &amp; payments</a>`,
     });
   }
   render(res, receiptView({ shop: req.shop, payment }));

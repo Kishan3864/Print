@@ -6,9 +6,16 @@ import { canTransition, PROOF_ALLOWED, STATUS_LABEL, TABS } from '../lib/status.
 import { removeStoredFile, storedFilePath } from '../lib/uploads.js';
 import { emailCustomer, emailShopNewOrder } from './notify.js';
 import { publishOrder } from '../lib/live.js';
+import { notifyShop } from './notifications.js';
 
 // Every query here is scoped by shop_id (tenant isolation) or by the
 // customer's unguessable token.
+
+/** In-app notification for the shop about one order (bell + badge). Sample orders stay quiet. */
+function notifyOrder(order, kind, title, body = '') {
+  if (order.is_sample) return;
+  notifyShop(order.shop_id, { kind, title: `P-${order.order_no} · ${title}`, body, link: `/shop/orders/${order.order_no}` });
+}
 
 export const getOrderByNo = (shopId, orderNo) =>
   db.prepare('SELECT * FROM orders WHERE shop_id = ? AND order_no = ?').get(shopId, Number(orderNo) || 0);
@@ -80,6 +87,7 @@ export const createOrder = (shop, data, files = [], { isSample = false, at } = {
     return getOrderById(shop.id, orderId);
   });
   const order = run();
+  notifyOrder(order, 'order', `New order from ${order.customer_name}`, `${order.size || 'Print'} · ${order.quantity} ${order.quantity === 1 ? 'copy' : 'copies'} · ${files.length} file${files.length === 1 ? '' : 's'}`);
   publishOrder(order);
   if (!isSample) {
     emailShopNewOrder(shop, order);
@@ -129,18 +137,20 @@ export function addProof(shop, order, file, note = '') {
 
 /** Customer approves the proof or asks for changes (only while status is proof_sent). */
 export function customerDecision(shop, order, decision, note = '', proof = null) {
-  if (order.status !== 'proof_sent') throw new Error('There is no proof waiting for your approval.');
+  if (order.status !== 'proof_sent') throw new Error('There is no design waiting for your OK.');
   const to = decision === 'approve' ? 'approved' : 'changes_requested';
   db.transaction(() => {
     const info = db
       .prepare("UPDATE orders SET status = ?, customer_note = ?, updated_at = ? WHERE id = ? AND shop_id = ? AND status = 'proof_sent'")
       .run(to, to === 'changes_requested' ? note : '', now(), order.id, shop.id);
-    if (!info.changes) throw new Error('There is no proof waiting for your approval.');
+    if (!info.changes) throw new Error('There is no design waiting for your OK.');
     // Record which proof file the decision was about.
     const about = proof ? `Proof: ${proof.original_name}` : '';
     addEvent(order.id, { actor: 'customer', type: 'status', from: order.status, to, note: [note, about].filter(Boolean).join('\n') });
   })();
   const decided = getOrderById(shop.id, order.id);
+  if (to === 'approved') notifyOrder(decided, 'success', `${decided.customer_name} said OK – ready to print`);
+  else notifyOrder(decided, 'warn', `${decided.customer_name} wants changes`, note);
   publishOrder(decided);
   return decided;
 }
@@ -244,6 +254,7 @@ export function addCustomerVersion(shop, order, files, note = '') {
     addEvent(order.id, { actor: 'customer', type: 'version', from: order.status, to, note: `Version ${v + 1}: ${files.map((f) => f.originalname).join(', ')}${note ? `\n${note}` : ''}` });
   })();
   const updated = getOrderById(shop.id, order.id);
+  notifyOrder(updated, 'order', `${updated.customer_name} sent a new file`, note);
   publishOrder(updated);
   return updated;
 }

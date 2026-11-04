@@ -92,8 +92,8 @@ ${variant === 'customer'
 <meta property="og:title" content="${fullTitle}">
 <meta property="og:description" content="${desc}">
 <meta property="og:image" content="${config.baseUrl}/icons/icon-512.png">
-<link rel="preload" href="/fonts/jakarta/plus-jakarta-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/jakarta/plus-jakarta-sans-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/poppins/poppins-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/comfortaa/comfortaa-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${asset('/css/app.css')}">
 ${brandShop ? html`<link rel="stylesheet" href="/brand/${brandShop.slug}.css?v=${String(brandShop.brand_color || '').slice(1)}">` : ''}
 <script src="${asset('/js/app.js')}" defer></script>

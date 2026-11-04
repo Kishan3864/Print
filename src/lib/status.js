@@ -2,11 +2,12 @@
 
 export const STATUSES = ['new', 'proof_sent', 'approved', 'changes_requested', 'printing', 'ready', 'delivered', 'cancelled'];
 
+// Plain words on purpose: a "proof" is shown everywhere as a design preview the customer OKs.
 export const STATUS_LABEL = {
   new: 'New',
-  proof_sent: 'Proof sent',
-  approved: 'Approved',
-  changes_requested: 'Changes requested',
+  proof_sent: 'Waiting for OK',
+  approved: 'Customer OK',
+  changes_requested: 'Needs changes',
   printing: 'Printing',
   ready: 'Ready',
   delivered: 'Delivered',
@@ -15,10 +16,10 @@ export const STATUS_LABEL = {
 
 // What a customer sees for each status (tracking page headline).
 export const STATUS_CUSTOMER_TEXT = {
-  new: 'We have received your files. The shop will check them shortly.',
-  proof_sent: 'Your proof is ready. Please check it and approve, or ask for changes.',
-  approved: 'You approved the proof. It goes to print next.',
-  changes_requested: 'Your change request was sent to the shop. They will send a new proof.',
+  new: 'We have your files. The shop will check them shortly.',
+  proof_sent: 'Your design preview is ready. Check it and tap OK, or ask for changes.',
+  approved: 'You said OK. It goes to print next.',
+  changes_requested: 'The shop got your changes and will send a new preview.',
   printing: 'Your order is being printed.',
   ready: 'Your order is ready for pickup.',
   delivered: 'Order delivered. Thank you!',
@@ -39,14 +40,17 @@ export const TRANSITIONS = {
 
 // Button labels for the shop's status actions.
 export const ACTION_LABEL = {
-  approved: 'Mark approved',
-  changes_requested: 'Mark changes requested',
+  approved: 'Customer said OK',
+  changes_requested: 'Customer wants changes',
   printing: 'Start printing',
-  ready: 'Mark ready',
-  delivered: 'Mark delivered',
+  ready: 'Printing done – mark ready',
+  delivered: 'Handed over to customer',
   cancelled: 'Cancel order',
   new: 'Reopen order',
 };
+
+// Orders that wait on the shop (badge on the Orders tab).
+export const TODO_STATUSES = ['new', 'changes_requested', 'approved'];
 
 // A proof can be uploaded while the job is not yet printing.
 export const PROOF_ALLOWED = new Set(['new', 'proof_sent', 'changes_requested', 'approved']);
@@ -55,11 +59,11 @@ export const canTransition = (from, to) => (TRANSITIONS[from] || []).includes(to
 
 // Dashboard tabs. `statuses: null` = everything.
 export const TABS = [
-  { key: 'active', label: 'Active', statuses: ['new', 'proof_sent', 'approved', 'changes_requested', 'printing', 'ready'] },
+  { key: 'active', label: 'In progress', statuses: ['new', 'proof_sent', 'approved', 'changes_requested', 'printing', 'ready'] },
   { key: 'new', label: 'New', statuses: ['new'] },
-  { key: 'proof_sent', label: 'Waiting approval', statuses: ['proof_sent'] },
-  { key: 'changes_requested', label: 'Changes', statuses: ['changes_requested'] },
-  { key: 'approved', label: 'Approved', statuses: ['approved'] },
+  { key: 'changes_requested', label: 'Needs changes', statuses: ['changes_requested'] },
+  { key: 'approved', label: 'Customer OK', statuses: ['approved'] },
+  { key: 'proof_sent', label: 'Waiting for OK', statuses: ['proof_sent'] },
   { key: 'printing', label: 'Printing', statuses: ['printing'] },
   { key: 'ready', label: 'Ready', statuses: ['ready'] },
   { key: 'delivered', label: 'Delivered', statuses: ['delivered'] },
@@ -70,8 +74,8 @@ export const TABS = [
 // Customer-facing progress timeline.
 const STEPS = [
   { key: 'received', label: 'Received' },
-  { key: 'proof', label: 'Proof' },
-  { key: 'approved', label: 'Approved' },
+  { key: 'proof', label: 'Preview' },
+  { key: 'approved', label: 'Your OK' },
   { key: 'printing', label: 'Printing' },
   { key: 'ready', label: 'Ready' },
   { key: 'delivered', label: 'Delivered' },

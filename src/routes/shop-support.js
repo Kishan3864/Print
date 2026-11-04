@@ -25,7 +25,7 @@ import { LIMITS, notificationsView, supportView, ticketView } from '../views/sho
 const router = Router();
 
 const ID = ':id(\\d{1,10})';
-const SAMPLE_MSG = 'Tickets are switched off in the shared sample shop. Create your free demo shop to try support.';
+const SAMPLE_MSG = 'Writing to us is off in the shared sample shop. Create your free demo shop to try it.';
 
 // Reading a ticket also clears the bell notifications that point to it.
 const qReadTicketNotes = db.prepare("UPDATE notifications SET read_at = ? WHERE audience = 'shop' AND shop_id = ? AND link = ? AND read_at IS NULL");
@@ -58,11 +58,11 @@ function readReply(body) {
 function notFound(res) {
   messagePage(res, {
     status: 404,
-    title: 'Ticket not found',
-    text: 'This ticket does not exist or belongs to another account.',
+    title: 'Question not found',
+    text: 'This question does not exist or belongs to another account.',
     variant: 'shop',
     iconName: 'search',
-    action: html`<a class="btn btn-primary" href="/shop/support">Back to Help &amp; support</a>`,
+    action: html`<a class="btn btn-primary" href="/shop/support">Back to Help</a>`,
   });
 }
 
@@ -109,7 +109,7 @@ router.post('/support', actionLimiter, sampleBlocked, (req, res) => {
   // A double tap or a resubmitted form within a minute opens the ticket that was just created.
   const recent = listShopTickets(req.shop.id).find((t) => t.subject === values.subject && Date.now() - Date.parse(t.created_at) < 60_000);
   const ticket = recent || createTicket(req.shop, values);
-  flash(req, 'success', 'Ticket sent. We will reply here soon and you will get a notification.');
+  flash(req, 'success', 'Message sent. Our reply will show here and in Alerts.');
   res.redirect(303, `/shop/support/${ticket.id}`);
 });
 
@@ -120,13 +120,13 @@ router.post(`/support/${ID}/reply`, actionLimiter, sampleBlocked, loadTicket, (r
   if (error) return showTicket(req, res, { reply: text.slice(0, LIMITS.replyMax), error, status: 400 });
   const reopened = req.ticket.status === 'closed';
   replyToTicket(req.ticket, 'shop', text);
-  flash(req, 'success', reopened ? 'Ticket reopened and your message was sent.' : 'Reply sent.');
+  flash(req, 'success', reopened ? 'Opened again – your message was sent.' : 'Reply sent.');
   res.redirect(303, `/shop/support/${req.ticket.id}#latest`);
 });
 
 router.post(`/support/${ID}/close`, actionLimiter, sampleBlocked, loadTicket, (req, res) => {
   if (req.ticket.status !== 'closed') setTicketStatus(req.ticket, 'closed');
-  flash(req, 'success', 'Marked as solved. Thank you! Write in the ticket any time to reopen it.');
+  flash(req, 'success', 'Marked as solved. Thank you! Write here any time to open it again.');
   res.redirect(303, `/shop/support/${req.ticket.id}`);
 });
 

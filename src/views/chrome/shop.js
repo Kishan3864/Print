@@ -3,11 +3,13 @@ import { config } from '../../config.js';
 import { formatDate } from '../../lib/util.js';
 import { shopState } from '../../services/shops.js';
 import { daysLeft } from '../../services/billing.js';
-import { csrfField, icon } from '../components.js';
+import { orderFormUrl } from '../../services/notify.js';
+import { icon } from '../components.js';
 
-// Shop owner app chrome: top bar (desktop nav), bottom tab bar (mobile), status banners.
-// Nav keys for render({active}): orders | link | support | billing | settings | notifications.
-// res.locals.shopUnread = unread notifications, res.locals.ticketsUnread = tickets with a new reply.
+// Shop owner app chrome: top bar (desktop nav), bottom tab bar (mobile), plan banner.
+// Nav keys for render({active}): orders | link | notifications | support | settings (billing counts as settings).
+// Badges come from res.locals: ordersTodo (orders waiting on the shop), shopUnread (alerts),
+// ticketsUnread (support replies). live.js re-renders <header> and .tabbar, shop.js refreshes them by poll.
 
 // Extra icons for the shop area (same markup as components.js icon()).
 const EXTRA = {
@@ -19,6 +21,8 @@ const EXTRA = {
   megaphone: '<path d="M3 10.5v3a1 1 0 0 0 1 1h2.5L12 18.5v-13L6.5 9.5H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
   inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+  sound: '<path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
 };
 
 /** icon() plus a few shop-only glyphs. */
@@ -31,30 +35,58 @@ export function shopIcon(name, cls = '') {
 
 export const SHOP_NAV = [
   { key: 'orders', href: '/shop', label: 'Orders', icon: 'orders' },
-  { key: 'link', href: '/shop/link', label: 'Link & QR', short: 'Link', icon: 'qr' },
-  { key: 'support', href: '/shop/support', label: 'Support', icon: 'support' },
-  { key: 'billing', href: '/shop/billing', label: 'Plan & billing', short: 'Plan', icon: 'card' },
-  { key: 'settings', href: '/shop/settings', label: 'Settings', icon: 'settings' },
+  { key: 'link', href: '/shop/link', label: 'Share link', short: 'Share', icon: 'share' },
+  { key: 'notifications', href: '/shop/notifications', label: 'Alerts', icon: 'bell' },
+  { key: 'support', href: '/shop/support', label: 'Help', icon: 'support' },
+  { key: 'settings', href: '/shop/settings', label: 'Account', icon: 'user' },
 ];
 
-const current = (active, key) => (active === key ? raw(' aria-current="page"') : '');
+// Plan & billing lives inside Account.
+const navKey = (active) => (active === 'billing' ? 'settings' : active);
+const current = (active, key) => (navKey(active) === key ? raw(' aria-current="page"') : '');
+
+/** True when the plan needs the owner (not paid yet, ended, ending within 7 days, or a personal demo). */
+export function planNeedsAttention(shop) {
+  if (!shop || (shop.is_demo && shop.slug === config.demo.slug)) return false;
+  if (shop.is_demo) return true;
+  const state = shopState(shop);
+  if (state === 'pending' || state === 'expired') return true;
+  const left = daysLeft(shop);
+  return state === 'active' && left != null && left <= 7;
+}
+
+const countText = (n) => (n > 99 ? '99+' : String(n));
+
+/** Red count bubble; always rendered (hidden at 0) so shop.js can update it. */
+function countBadge(key, n, what) {
+  return html`<span class="badge" data-badge="${key}"${n ? raw(` title="${n} ${what}"`) : raw(' hidden')}>${n ? countText(n) : ''}</span>`;
+}
 
 function badgeFor(res, key) {
-  if (key === 'orders') return html`<span class="badge" data-new-badge hidden></span>`;
-  if (key === 'support' && res.locals.ticketsUnread) return html`<span class="badge" title="New reply">${res.locals.ticketsUnread}</span>`;
+  const l = res.locals;
+  if (key === 'orders') return countBadge('todo', l.ordersTodo || 0, 'waiting for you');
+  if (key === 'notifications') return countBadge('alerts', l.shopUnread || 0, 'new');
+  if (key === 'support') return countBadge('support', l.ticketsUnread || 0, 'new reply');
+  if (key === 'settings' && planNeedsAttention(l.shop)) return html`<span class="badge-dot" title="Plan needs attention"></span>`;
   return '';
+}
+
+/** Screen-reader text for a nav item's badge. */
+function srCount(res, key) {
+  const l = res.locals;
+  const n = key === 'orders' ? l.ordersTodo : key === 'notifications' ? l.shopUnread : key === 'support' ? l.ticketsUnread : 0;
+  return n ? html`<span class="sr-only"> (${n} new)</span>` : '';
 }
 
 /** Shop logo, or its initial on a soft tile. */
 export function shopAvatar(shop, cls = 'sh-avatar') {
-  if (shop?.logo_file) return html`<span class="${cls} has-logo"><img src="/logo/${shop.slug}?v=${shop.logo_file.slice(0, 8)}" alt="" width="36" height="36"></span>`;
+  if (shop?.logo_file) return html`<span class="${cls} has-logo"><img src="/logo/${shop.slug}?v=${shop.logo_file.slice(0, 8)}" alt="" width="40" height="40"></span>`;
   const initial = String(shop?.name || 'P').trim().charAt(0).toUpperCase() || 'P';
   return html`<span class="${cls}" aria-hidden="true">${initial}</span>`;
 }
 
 export function shopHeader(res, active) {
   const shop = res.locals.shop;
-  const unread = res.locals.shopUnread || 0;
   return html`<header class="app-header sh-header">
     <div class="container header-row">
       <a class="sh-brand" href="/shop" aria-label="${shop?.name || 'Brighton Print'} – orders">
@@ -62,12 +94,13 @@ export function shopHeader(res, active) {
         <span class="sh-brand-text"><b>${shop?.name || 'Brighton Print'}</b><small>Brighton Print</small></span>
       </a>
       <nav class="app-nav sh-nav" aria-label="Shop">
-        ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="nav-item${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.label}</span>${badgeFor(res, n.key)}</a>`)}
+        ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="nav-item${navKey(active) === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`)}
       </nav>
       <div class="header-actions">
         <button type="button" class="btn btn-ghost btn-sm" data-install hidden>${icon('install')}<span class="hide-xs">Install app</span></button>
-        <a class="btn btn-ghost btn-sm btn-icon sh-bell${active === 'notifications' ? ' is-active' : ''}" href="/shop/notifications" aria-label="Notifications${unread ? ` (${unread} new)` : ''}"${current(active, 'notifications')}>${icon('bell')}${unread ? html`<span class="badge">${unread > 99 ? '99+' : unread}</span>` : ''}</a>
-        <form method="post" action="/logout" class="inline-form hide-mobile">${csrfField(res)}<button class="btn btn-ghost btn-sm" type="submit">${icon('logout')}<span>Log out</span></button></form>
+        ${shop
+          ? html`<a class="btn btn-soft btn-sm sh-mypage" href="${orderFormUrl(shop)}" target="_blank" rel="noopener" title="Open the page your customers order from">${icon('eye')}<span class="hide-xs">My order page</span></a>`
+          : ''}
       </div>
     </div>
   </header>`;
@@ -75,18 +108,18 @@ export function shopHeader(res, active) {
 
 export function shopTabbar(res, active) {
   return html`<nav class="tabbar sh-tabbar" aria-label="Shop sections">
-    ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="tab${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.short || n.label}</span>${badgeFor(res, n.key)}</a>`)}
+    ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="tab${navKey(active) === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.short || n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`)}
   </nav>`;
 }
 
-/** Plan / demo status banner shown on every shop page. */
+/** Plan / demo status banner shown on every shop page (only when something needs doing). */
 export function shopStateBanner(res) {
   const shop = res.locals.shop;
   if (!shop || (shop.is_demo && shop.slug === config.demo.slug)) return '';
   const state = shopState(shop);
   const left = daysLeft(shop);
   const banner = (tone, text, cta = 'Choose a plan', href = '/shop/billing') =>
-    html`<div class="renew-banner renew-${tone} sh-banner sh-banner-${tone}" role="${tone === 'danger' ? 'alert' : 'status'}">
+    html`<div class="sh-banner sh-banner-${tone}" role="${tone === 'danger' ? 'alert' : 'status'}">
       <div class="container sh-banner-row">
         <span class="sh-banner-icon">${tone === 'info' ? shopIcon('bolt') : icon(tone === 'danger' ? 'alert' : 'clock')}</span>
         <p class="sh-banner-text">${text}</p>
@@ -97,12 +130,12 @@ export function shopStateBanner(res) {
     const ends = shop.demo_expires_at ? Date.parse(shop.demo_expires_at) - Date.now() : (left + 1) * 86400000;
     const h = Math.max(0, Math.floor(ends / 3600000));
     const remaining = h >= 48 ? `${Math.floor(h / 24)} days left` : h >= 1 ? `${h} hours left` : 'ends soon';
-    if (state === 'expired') return banner('danger', html`<b>Your demo has ended.</b> Register your shop to start taking real orders.`, 'Register your shop', '/register');
-    return banner('info', html`<b>Demo shop · ${remaining}.</b> Sample orders, real features. Like it? Register your own shop.`, 'Register your shop', '/register');
+    if (state === 'expired') return banner('danger', html`<b>Your demo has ended.</b> Register your shop to take real orders.`, 'Register shop', '/register');
+    return banner('info', html`<b>Free demo · ${remaining}.</b> Everything works – orders here are for testing.`, 'Go live', '/shop/billing');
   }
-  if (state === 'pending') return banner('info', html`<b>Choose a plan to start.</b> Your order link opens as soon as the payment is done.`);
-  if (state === 'expired') return banner('danger', html`<b>Your plan ended on ${formatDate(shop.paid_until)}.</b> Your order link is closed. Renew to switch it back on.`, 'Renew now');
-  if (state === 'paused') return banner('danger', html`<b>Your account is paused.</b> Your order link is not taking orders. Please contact support.`, 'Contact support', '/shop/support');
-  if (left != null && left <= 7) return banner('warn', html`<b>Your plan ends ${left === 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`}</b> (${formatDate(shop.paid_until)}). Renew to avoid a break.`, 'Renew');
+  if (state === 'pending') return banner('info', html`<b>One step left:</b> choose a plan and your order link opens right away.`);
+  if (state === 'expired') return banner('danger', html`<b>Your plan ended on ${formatDate(shop.paid_until)}.</b> Customers can't order until you renew.`, 'Renew now');
+  if (state === 'paused') return banner('danger', html`<b>Your account is paused.</b> Customers can't order right now.`, 'Contact us', '/shop/support');
+  if (left != null && left <= 7) return banner('warn', html`<b>Plan ends ${left === 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`}</b> (${formatDate(shop.paid_until)}). Renew to avoid a break.`, 'Renew');
   return '';
 }

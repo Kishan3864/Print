@@ -9,7 +9,8 @@ import { csrfField, field, icon, withCsrf } from '../components.js';
 import { COLOR_LABEL, GLYPH, SIDES_LABEL, contactActions, ownerNote, shopAddress } from './common.js';
 
 // Public, shop-branded order form (works without JS; /js/order-form.js adds the
-// file list, step tracking, live summary, client-side checks and upload progress).
+// file list, done ticks, live summary, client-side checks and upload progress).
+// Order on the page: 1 files (the main thing) · 2 print options (sensible defaults) · 3 name + mobile · Send.
 
 const TYPE_LIST = [...new Set(ALLOWED_EXT.map((e) => ({ jpeg: 'jpg', tiff: 'tif' })[e] || e))].map((e) => e.toUpperCase()).join(', ');
 // Up to this many sizes show as tap chips; longer lists use a dropdown.
@@ -25,31 +26,25 @@ function describe(id, { hint = false, error = '' } = {}) {
 
 const MINUS = html`<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/></svg>`;
 
-const STEPS = [
-  { key: 'details', label: 'Your details', href: '#cust-sec-you' },
-  { key: 'files', label: 'Files', href: '#cust-sec-files' },
-  { key: 'options', label: 'Print options', href: '#cust-sec-print' },
-  { key: 'send', label: 'Send', href: '#cust-send' },
-];
+// Pickup / delivery reuse the shared icons.
+const TOGGLE_GLYPH = { ...GLYPH, pickup: html`<span class="cust-tog-ic" aria-hidden="true">${icon('store')}</span>`, delivery: html`<span class="cust-tog-ic" aria-hidden="true">${icon('home')}</span>` };
 
-const TOGGLE_SUB = { color: 'Full colour print', bw: 'Black ink only', single: 'Print on the front', both: 'Front and back' };
-
-/** Large toggle card (radio). */
+/** Big tap choice (radio). The <b> holds the label the live summary reads. */
 const toggle = (name, value, current, label) =>
   html`<label class="cust-tog">
     <input type="radio" name="${name}" value="${value}"${current === value ? html` checked` : ''}>
     <span class="cust-tog-box">
-      ${GLYPH[value]}
-      <span class="cust-tog-text"><b>${label}</b><small>${TOGGLE_SUB[value]}</small></span>
+      ${TOGGLE_GLYPH[value] || ''}
+      <b class="cust-tog-label">${label}</b>
       <span class="cust-tog-tick" aria-hidden="true">${icon('check')}</span>
     </span>
   </label>`;
 
-/** Section heading: number badge (turns into a tick when done), title, one-line help. */
+/** Section heading: number badge (turns into a tick when done) + title + one short line. */
 const secHead = (num, id, title, text) =>
   html`<div class="cust-sec-head">
     <span class="cust-sec-num" aria-hidden="true"><b>${num}</b>${icon('check')}</span>
-    <div class="cust-sec-titles"><h2 id="${id}">${title}</h2><p>${text}</p></div>
+    <div class="cust-sec-titles"><h2 id="${id}">${title}</h2>${text ? html`<p>${text}</p>` : ''}</div>
   </div>`;
 
 // Where each server-side error points to (for the error summary links).
@@ -57,7 +52,7 @@ const ERROR_TARGET = { name: 'cust-name', mobile: 'cust-mobile', email: 'cust-em
 
 /**
  * Order form page.
- * values: { name, mobile, email, size, quantity, color_mode, sides, notes } (kept after errors)
+ * values: { name, mobile, email, size, quantity, color_mode, sides, paper, delivery, notes } (kept after errors)
  * errors: { name, mobile, email, files, size, color_mode, sides, notes }
  */
 export function orderFormPage(res, { shop, values = {}, errors = {}, owner = false }, status = 200) {
@@ -68,9 +63,9 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
   const multi = lim.files > 1;
   const errorKeys = Object.keys(errors).filter((k) => errors[k]);
   const sample = shop.is_demo && shop.slug === config.demo.slug;
-  const limitText = multi
-    ? `Up to ${lim.files} files, ${sizeText(lim.bytes)} each`
-    : `1 file, up to ${sizeText(lim.bytes)}${shop.is_demo ? ' (demo limit)' : ''}`;
+  const limitText = multi ? `Up to ${lim.files} files, ${sizeText(lim.bytes)} each` : `1 file, up to ${sizeText(lim.bytes)}${shop.is_demo ? ' (demo)' : ''}`;
+  // "More options" opens by itself when something in it was filled in or needs fixing.
+  const moreOpen = Boolean(v.paper || v.delivery === 'delivery' || v.notes || errors.notes);
 
   const errorSummary = errorKeys.length
     ? html`<div class="cust-errors" role="alert" aria-labelledby="cust-errors-title">
@@ -105,14 +100,8 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
     ${owner ? ownerNote('This is your customer order page – share this link with your customers.', '/shop', 'Back to dashboard') : ''}
 
     <header class="cust-hero">
-      <p class="cust-kicker">${icon('printer')}<span>Online print order</span></p>
-      <h1>Send your files to <span class="cust-hero-shop">${shop.name}</span></h1>
-      <p class="cust-lead">Takes about a minute. You get an order number straight away and approve the proof from your phone.</p>
-      <ul class="cust-perks" aria-label="Why order online">
-        <li>${icon('check')}<span>Instant order number</span></li>
-        <li>${icon('eye')}<span>Approve proof online</span></li>
-        <li>${icon('shield')}<span>Private files</span></li>
-      </ul>
+      <h1>Send your print order</h1>
+      <p class="cust-lead">Add your file, choose how to print, send. You get an order number at once.</p>
     </header>
 
     ${errorSummary}
@@ -122,60 +111,17 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
       ${csrfField(res)}
 
       <div class="cust-main">
-        <ol class="cust-stepper" data-stepper aria-label="Order steps">
-          ${STEPS.map(
-            (s, i) => html`<li class="cust-step${i === 0 ? ' is-current' : ''}" data-step="${s.key}">
-              <a href="${s.href}"${i === 0 ? html` aria-current="step"` : ''}>
-                <span class="cust-step-dot" aria-hidden="true"><b>${i + 1}</b>${icon('check')}</span>
-                <span class="cust-step-label">${s.label}<span class="sr-only" data-step-sr></span></span>
-              </a>
-            </li>`
-          )}
-        </ol>
-
-        <section class="cust-sec" id="cust-sec-you" data-sec="details" aria-labelledby="cust-sec-you-t">
-          ${secHead(1, 'cust-sec-you-t', 'Your details', `So ${shop.name} can reach you about this order.`)}
-          <div class="cust-sec-body">
-            ${field({
-              label: 'Your name',
-              id: 'cust-name',
-              error: errors.name,
-              control: html`<input type="text" id="cust-name" name="name" value="${v.name}" required maxlength="80" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="e.g. Rahul Sharma"${describe('cust-name', { error: errors.name })}>`,
-            })}
-            ${field({
-              label: 'Mobile number',
-              id: 'cust-mobile',
-              hint: 'For calls or WhatsApp about this order only.',
-              error: errors.mobile,
-              control: html`<div class="cust-tel">
-                <span class="cust-tel-cc" aria-hidden="true">+${config.countryCode}</span>
-                <input type="tel" id="cust-mobile" name="mobile" value="${v.mobile}" required maxlength="20" inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="98765 43210" pattern="\\D*(\\d\\D*){10,15}" title="Enter a 10-digit mobile number"${describe('cust-mobile', { hint: true, error: errors.mobile })}>
-              </div>`,
-            })}
-            <details class="cust-more" data-email-more${v.email || errors.email ? html` open` : ''}>
-              <summary>${icon('mail')}<span>Add email for updates</span><span class="optional">optional</span></summary>
-              ${field({
-                label: 'Email',
-                id: 'cust-email',
-                hint: 'We send your order link and proof updates here.',
-                error: errors.email,
-                control: html`<input type="email" id="cust-email" name="email" value="${v.email}" maxlength="160" inputmode="email" autocomplete="email" enterkeyhint="next" placeholder="you@example.com"${describe('cust-email', { hint: true, error: errors.email })}>`,
-              })}
-            </details>
-          </div>
-        </section>
-
-        <section class="cust-sec" id="cust-sec-files" data-sec="files" aria-labelledby="cust-sec-files-t">
-          ${secHead(2, 'cust-sec-files-t', multi ? 'Your files' : 'Your file', 'A print-ready PDF works best. Photos and design files are fine too.')}
+        <section class="cust-sec cust-sec-files" id="cust-sec-files" data-sec="files" aria-labelledby="cust-sec-files-t">
+          ${secHead(1, 'cust-sec-files-t', multi ? 'Add your files' : 'Add your file', limitText)}
           <div class="cust-sec-body">
             <div class="cust-files${errors.files ? ' has-error' : ''}" data-files-field>
               <label class="sr-only" for="cust-files">${multi ? 'Files to print' : 'File to print'}</label>
               <div class="dropzone cust-drop" data-dropzone>
                 <input type="file" id="cust-files" name="files"${multi ? html` multiple` : ''} accept="${ACCEPT_ATTR}" required aria-describedby="cust-files-hint cust-files-error"${errors.files ? html` aria-invalid="true"` : ''}>
                 <span class="cust-drop-ic">${icon('upload')}</span>
-                <strong class="cust-drop-title" data-dz-title>${multi ? 'Choose files to print' : 'Choose a file to print'}</strong>
-                <span class="cust-drop-sub"><span class="cust-dz-tap">Tap to pick from your phone</span><span class="cust-dz-drag">Drag &amp; drop here, or click to browse</span></span>
-                <span class="cust-dz-picked">${icon('check')}<span>${multi ? 'Files selected – tap to change' : 'File selected – tap to change'}</span></span>
+                <strong class="cust-drop-title" data-dz-title>${multi ? 'Choose files' : 'Choose file'}</strong>
+                <span class="cust-drop-sub"><span class="cust-dz-tap">Tap to pick from your phone</span><span class="cust-dz-drag">Drop here, or click to browse</span></span>
+                <span class="cust-dz-picked">${icon('check')}<span>${multi ? 'Files added – tap to change' : 'File added – tap to change'}</span></span>
               </div>
               <ul class="cust-file-list" data-file-list aria-label="Selected files" hidden></ul>
               <div class="cust-files-bar" data-files-bar hidden>
@@ -183,9 +129,9 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
                 <button type="button" class="link-btn" data-files-clear>Remove all</button>
               </div>
               <p class="field-error cust-files-error" id="cust-files-error" data-files-error role="alert"${errors.files ? '' : html` hidden`}>${errors.files || ''}</p>
-              <p class="hint cust-files-hint" id="cust-files-hint">${limitText}. PDF, JPG, PNG, CDR, AI, PSD, Word, ZIP and more.</p>
+              <p class="hint cust-files-hint" id="cust-files-hint">PDF, photo, Word, CDR, AI, PSD and more.</p>
               <details class="cust-types">
-                <summary>All allowed file types</summary>
+                <summary>All file types</summary>
                 <p>${TYPE_LIST}</p>
               </details>
             </div>
@@ -193,59 +139,92 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
         </section>
 
         <section class="cust-sec" id="cust-sec-print" data-sec="options" aria-labelledby="cust-sec-print-t">
-          ${secHead(3, 'cust-sec-print-t', 'Print options', 'Not sure? Keep the defaults and add a note – the shop will confirm.')}
+          ${secHead(2, 'cust-sec-print-t', 'How to print', 'Already set to the usual. Change only what you need.')}
           <div class="cust-sec-body">
             ${sizeControl}
             <div class="cust-opt">
-              <label class="cust-opt-label" for="cust-qty">Quantity <span class="optional">copies</span></label>
+              <label class="cust-opt-label" for="cust-qty">Copies</label>
               <div class="cust-qty" data-qty>
                 <button type="button" class="cust-qty-btn" data-qty-step="-1" aria-label="One less" hidden>${MINUS}</button>
                 <input type="number" id="cust-qty" name="quantity" value="${v.quantity}" min="1" max="100000" step="1" inputmode="numeric" required>
                 <button type="button" class="cust-qty-btn" data-qty-step="1" aria-label="One more" hidden>${icon('plus')}</button>
               </div>
             </div>
-            <div class="cust-opt-pair">
-              <fieldset class="cust-opt${errors.color_mode ? ' has-error' : ''}">
-                <legend class="cust-opt-label">Print in</legend>
-                <div class="cust-togs">
-                  ${toggle('color_mode', 'color', v.color_mode, COLOR_LABEL.color)}
-                  ${toggle('color_mode', 'bw', v.color_mode, COLOR_LABEL.bw)}
-                </div>
-                ${errors.color_mode ? html`<p class="field-error">${errors.color_mode}</p>` : ''}
-              </fieldset>
-              <fieldset class="cust-opt${errors.sides ? ' has-error' : ''}">
-                <legend class="cust-opt-label">Sides</legend>
-                <div class="cust-togs">
-                  ${toggle('sides', 'single', v.sides, SIDES_LABEL.single)}
-                  ${toggle('sides', 'both', v.sides, SIDES_LABEL.both)}
-                </div>
-                ${errors.sides ? html`<p class="field-error">${errors.sides}</p>` : ''}
-              </fieldset>
-            </div>
-            <div class="cust-opt-pair">
-              <div class="cust-opt">
-                <label class="cust-opt-label" for="cust-paper">Paper <span class="optional">optional</span></label>
-                <select id="cust-paper" name="paper">
-                  <option value="">Shop decides</option>
-                  ${paperOptions(shop).map((p) => html`<option value="${p}"${v.paper === p ? raw(' selected') : ''}>${p}</option>`)}
-                </select>
+            <fieldset class="cust-opt${errors.color_mode ? ' has-error' : ''}">
+              <legend class="cust-opt-label">Print in</legend>
+              <div class="cust-togs">
+                ${toggle('color_mode', 'color', v.color_mode, COLOR_LABEL.color)}
+                ${toggle('color_mode', 'bw', v.color_mode, COLOR_LABEL.bw)}
               </div>
-              <fieldset class="cust-opt">
-                <legend class="cust-opt-label">Pickup or delivery</legend>
-                <div class="cust-togs">
-                  ${toggle('delivery', 'pickup', v.delivery, 'Pickup')}
-                  ${toggle('delivery', 'delivery', v.delivery, 'Delivery')}
+              ${errors.color_mode ? html`<p class="field-error">${errors.color_mode}</p>` : ''}
+            </fieldset>
+            <fieldset class="cust-opt${errors.sides ? ' has-error' : ''}">
+              <legend class="cust-opt-label">Sides</legend>
+              <div class="cust-togs">
+                ${toggle('sides', 'single', v.sides, SIDES_LABEL.single)}
+                ${toggle('sides', 'both', v.sides, SIDES_LABEL.both)}
+              </div>
+              ${errors.sides ? html`<p class="field-error">${errors.sides}</p>` : ''}
+            </fieldset>
+
+            <details class="cust-extra"${moreOpen ? raw(' open') : ''}>
+              <summary>${icon('plus')}<span>More options</span><small>paper, delivery, note</small></summary>
+              <div class="cust-extra-body">
+                <div class="cust-opt">
+                  <label class="cust-opt-label" for="cust-paper">Paper <span class="optional">optional</span></label>
+                  <select id="cust-paper" name="paper">
+                    <option value="">Shop decides</option>
+                    ${paperOptions(shop).map((p) => html`<option value="${p}"${v.paper === p ? raw(' selected') : ''}>${p}</option>`)}
+                  </select>
                 </div>
-              </fieldset>
+                <fieldset class="cust-opt">
+                  <legend class="cust-opt-label">Pickup or delivery</legend>
+                  <div class="cust-togs">
+                    ${toggle('delivery', 'pickup', v.delivery, 'Pickup')}
+                    ${toggle('delivery', 'delivery', v.delivery, 'Delivery')}
+                  </div>
+                </fieldset>
+                ${field({
+                  label: 'Note for the shop',
+                  id: 'cust-notes',
+                  optional: true,
+                  error: errors.notes,
+                  control: html`<textarea id="cust-notes" name="notes" rows="3" maxlength="1000" placeholder="e.g. 300 GSM card, lamination, need by Friday 5 pm"${describe('cust-notes', { error: errors.notes })}>${v.notes}</textarea>`,
+                })}
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="cust-sec" id="cust-sec-you" data-sec="details" aria-labelledby="cust-sec-you-t">
+          ${secHead(3, 'cust-sec-you-t', 'Your name & mobile', `So ${shop.name} can call or WhatsApp you.`)}
+          <div class="cust-sec-body">
+            <div class="cust-you">
+              ${field({
+                label: 'Name',
+                id: 'cust-name',
+                error: errors.name,
+                control: html`<input type="text" id="cust-name" name="name" value="${v.name}" required maxlength="80" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="e.g. Rahul Sharma"${describe('cust-name', { error: errors.name })}>`,
+              })}
+              ${field({
+                label: 'Mobile number',
+                id: 'cust-mobile',
+                error: errors.mobile,
+                control: html`<div class="cust-tel">
+                  <span class="cust-tel-cc" aria-hidden="true">+${config.countryCode}</span>
+                  <input type="tel" id="cust-mobile" name="mobile" value="${v.mobile}" required maxlength="20" inputmode="tel" autocomplete="tel" enterkeyhint="done" placeholder="98765 43210" pattern="\\D*(\\d\\D*){10,15}" title="Enter a 10-digit mobile number"${describe('cust-mobile', { error: errors.mobile })}>
+                </div>`,
+              })}
             </div>
-            ${field({
-              label: 'Notes for the shop',
-              id: 'cust-notes',
-              optional: true,
-              hint: 'Paper, finish, binding, deadline – anything the shop should know.',
-              error: errors.notes,
-              control: html`<textarea id="cust-notes" name="notes" rows="3" maxlength="1000" placeholder="e.g. 300 GSM matte card, lamination, need by Friday 5 pm"${describe('cust-notes', { hint: true, error: errors.notes })}>${v.notes}</textarea>`,
-            })}
+            <details class="cust-more" data-email-more${v.email || errors.email ? html` open` : ''}>
+              <summary>${icon('mail')}<span>Get updates by email</span><span class="optional">optional</span></summary>
+              ${field({
+                label: 'Email',
+                id: 'cust-email',
+                error: errors.email,
+                control: html`<input type="email" id="cust-email" name="email" value="${v.email}" maxlength="160" inputmode="email" autocomplete="email" enterkeyhint="done" placeholder="you@example.com"${describe('cust-email', { error: errors.email })}>`,
+              })}
+            </details>
           </div>
         </section>
       </div>
@@ -256,7 +235,7 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
           <dl class="cust-sum-list">
             <div><dt>Files</dt><dd data-sum="files">Not added yet</dd></div>
             <div><dt>Size</dt><dd data-sum="size">${v.size}</dd></div>
-            <div><dt>Quantity</dt><dd data-sum="qty">${v.quantity}</dd></div>
+            <div><dt>Copies</dt><dd data-sum="qty">${v.quantity}</dd></div>
             <div><dt>Print</dt><dd data-sum="print">${COLOR_LABEL[v.color_mode]} · ${SIDES_LABEL[v.sides]}</dd></div>
           </dl>
         </div>
@@ -274,18 +253,18 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
               <span data-progress-eta></span>
             </div>
             <div class="cust-progress-foot">
-              <p class="hint">Keep this page open. Big files can take a few minutes on mobile data.</p>
+              <p class="hint">Keep this page open. Big files can take a few minutes.</p>
               <button type="button" class="btn btn-ghost btn-sm" data-progress-cancel>Cancel</button>
             </div>
           </div>
           <p class="cust-sum-line" data-sum-line aria-live="polite" hidden></p>
-          <button type="submit" class="btn btn-brand btn-lg btn-block cust-send" data-submit data-loading="Uploading…">${icon('upload')}<span data-submit-label>Send order</span></button>
+          <button type="submit" class="btn btn-brand btn-lg btn-block cust-send" data-submit data-loading="Uploading…">${icon('arrowRight')}<span data-submit-label>Send order</span></button>
         </div>
         ${shop.is_demo
           ? html`<p class="cust-trust cust-trust-demo">${icon('alert')}<span>${sample
-              ? html`<b>Demo:</b> everyone trying the demo can see this order and its file for a few hours. Use sample details and a sample file – not private documents.`
-              : html`<b>Demo shop:</b> orders here are for testing and are not printed. Use a sample file – not private documents.`}</span></p>`
-          : html`<p class="cust-trust">${icon('shield')}<span>Your files are private – only ${shop.name} can open them, and they are deleted automatically after ${shop.retention_days} days.</span></p>`}
+              ? html`<b>Demo:</b> anyone trying the demo can see this order for a few hours. Use a sample file, not private documents.`
+              : html`<b>Demo shop:</b> orders here are for testing and are not printed. Use a sample file.`}</span></p>`
+          : html`<p class="cust-trust">${icon('shield')}<span>Only ${shop.name} can open your files. They are deleted after ${shop.retention_days} days.</span></p>`}
       </div>
     </form>
   </div>`;
@@ -294,7 +273,7 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
     res,
     {
       title: `Order online – ${shop.name}`,
-      description: `Send your print files to ${shop.name} online, get an order number instantly and approve your proof from your phone.`,
+      description: `Send your print files to ${shop.name} online and get an order number at once.`,
       variant: 'customer',
       brandShop: shop,
       bodyClass: 'cust-order-page',
@@ -311,11 +290,11 @@ export function closedPage(res, shop, { owner = false } = {}, status = 200) {
     ${owner ? ownerNote('Your plan is not active, so customers see this page instead of the order form.', '/shop/billing', 'Open Plan & billing') : ''}
     <section class="cust-card cust-closed" aria-labelledby="cust-closed-title">
       <span class="cust-closed-ic">${icon('clock')}</span>
-      <h1 id="cust-closed-title">${shop.name} is not taking online orders right now</h1>
-      <p class="cust-lead">${shop.phone ? 'Please call or WhatsApp the shop to place your order – they will be happy to help.' : 'Please visit or contact the shop directly to place your order.'}</p>
+      <h1 id="cust-closed-title">Online orders are paused</h1>
+      <p class="cust-lead">${shop.phone ? html`<b>${shop.name}</b> is not taking orders here right now. Please call or WhatsApp the shop.` : html`<b>${shop.name}</b> is not taking orders here right now. Please contact the shop directly.`}</p>
       ${contactActions(shop, `Hi ${shop.name}, I would like to place a print order.`)}
       ${shopAddress(shop)}
-      <p class="cust-closed-note">${icon('info')}<span>Already placed an order? Your order link still works.</span></p>
+      <p class="cust-closed-note">${icon('info')}<span>Already ordered? Your order link still works.</span></p>
     </section>
   </div>`;
   render(res, { title: `${shop.name} – online orders paused`, variant: 'customer', brandShop: shop, bodyClass: 'cust-closed-page', body }, status);

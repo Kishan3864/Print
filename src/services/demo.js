@@ -61,7 +61,7 @@ function samplePlan(nowMs, todayMs) {
       data: { customer_name: 'Sanjay', customer_mobile: '98xxxxxx10', size: 'A4', quantity: 500, color_mode: 'color', sides: 'single', notes: 'Sample order – Letterheads for my clinic. Logo on top, address and phone number in the footer.' },
       files: [{ name: 'Clinic letterhead final.pdf', pdf: { title: 'Clinic Letterhead', subtitle: 'A4 · 500 sheets · colour · single side', accent: '#1a5d40' } }],
       steps: [
-        { h: 1.5, proof: { name: 'Letterhead proof.png', art: { style: 'band', paper: [210, 297], accent: '#1a5d40', title: 'City Clinic', sub: 'Letterhead' } }, note: 'Letterhead proof – please check the address and phone number.' },
+        { h: 1.5, proof: { name: 'Letterhead design.png', art: { style: 'band', paper: [210, 297], accent: '#1a5d40', title: 'City Clinic', sub: 'Letterhead' } }, note: 'Letterhead design – please check the address and phone number.' },
         { h: 3, by: 'customer', to: 'approved', note: 'All correct, please print.' },
         { h: 4, to: 'printing' },
         { h: 22, to: 'ready', note: '500 letterheads packed and ready for pickup.' },
@@ -79,7 +79,7 @@ function samplePlan(nowMs, todayMs) {
       data: { customer_name: 'Arjun', customer_mobile: '99xxxxxx37', size: 'Flex / Banner', quantity: 1, color_mode: 'color', sides: 'single', notes: 'Sample order – Shop opening flex banner, 6 x 3 ft, with eyelets on all four corners.' },
       files: [{ name: 'Opening banner 6x3 ft.pdf', pdf: { title: 'Grand Opening Banner', subtitle: 'Flex · 6 x 3 ft · colour · with eyelets', accent: '#f97316' } }],
       steps: [
-        { h: 1, proof: { name: 'Banner proof 6x3.png', art: { style: 'banner', paper: [6, 3], accent: '#f97316', title: 'Grand Opening', sub: 'Shree Mobile Point' } }, note: 'Banner proof (6 x 3 ft) – please check the spelling of the shop name and phone number.' },
+        { h: 1, proof: { name: 'Banner design 6x3.png', art: { style: 'banner', paper: [6, 3], accent: '#f97316', title: 'Grand Opening', sub: 'Shree Mobile Point' } }, note: 'Banner design (6 x 3 ft) – please check the spelling of the shop name and phone number.' },
         { h: 2.5, by: 'customer', to: 'approved' },
         { h: 3, to: 'printing' },
         { h: 8, to: 'ready', note: 'Banner ready with eyelets on all corners.' },
@@ -90,7 +90,7 @@ function samplePlan(nowMs, todayMs) {
       data: { customer_name: 'Rahul', customer_mobile: '90xxxxxx41', size: 'A4', quantity: 2, color_mode: 'bw', sides: 'both', notes: 'Sample order – Final year college project, 86 pages. Spiral binding with a clear front cover, 2 copies.' },
       files: [{ name: 'Project report final.pdf', pdf: { title: 'College Project Report', subtitle: 'A4 · 86 pages · both sides · spiral binding', accent: '#1e3a8a' } }],
       steps: [
-        { h: 1, proof: { name: 'Project cover proof.png', art: { style: 'band', paper: [210, 297], accent: '#1e3a8a', title: 'Project Report', sub: 'Final year' } }, note: 'Cover page proof – please check your name, roll number and college name.' },
+        { h: 1, proof: { name: 'Project cover design.png', art: { style: 'band', paper: [210, 297], accent: '#1e3a8a', title: 'Project Report', sub: 'Final year' } }, note: 'Cover page design – please check your name, roll number and college name.' },
         { h: 3, by: 'customer', to: 'approved' },
         { h: 20, to: 'printing', note: 'Printing both copies now. Binding after printing.' },
       ],
@@ -103,9 +103,9 @@ function samplePlan(nowMs, todayMs) {
         { name: 'Wedding card back.png', art: { style: 'wedding', paper: [5, 7], title: 'Neha & Vikram', sub: 'Wedding invitation', date: '14 December' } },
       ],
       steps: [
-        { h: 2, proof: { name: 'Wedding card proof 1.png', art: { style: 'wedding', paper: [5, 7], title: 'Neha & Vikram', sub: 'Wedding invitation', date: '12 December' } }, note: 'Proof 1 – please check the names, date and venue carefully.' },
+        { h: 2, proof: { name: 'Wedding card design 1.png', art: { style: 'wedding', paper: [5, 7], title: 'Neha & Vikram', sub: 'Wedding invitation', date: '12 December' } }, note: 'Design 1 – please check the names, date and venue carefully.' },
         { h: 4, by: 'customer', to: 'changes_requested', note: 'Please change the date to 14 December and make the names a little bigger.' },
-        { h: 6, proof: { name: 'Wedding card proof 2.png', art: { style: 'wedding', paper: [5, 7], title: 'Neha & Vikram', sub: 'Wedding invitation', date: '14 December', big: true } }, note: 'Proof 2 – date changed to 14 December and names made bigger.' },
+        { h: 6, proof: { name: 'Wedding card design 2.png', art: { style: 'wedding', paper: [5, 7], title: 'Neha & Vikram', sub: 'Wedding invitation', date: '14 December', big: true } }, note: 'Design 2 – date changed to 14 December and names made bigger.' },
         { h: 7, by: 'customer', to: 'approved', note: 'Looks perfect now. Please print.' },
       ],
     },
@@ -114,7 +114,7 @@ function samplePlan(nowMs, todayMs) {
       data: { customer_name: 'Pooja', customer_mobile: '96xxxxxx62', size: 'Visiting card', quantity: 500, color_mode: 'color', sides: 'both', notes: 'Sample order – 500 visiting cards, matte finish. Same design as last time with my new phone number.' },
       files: [{ name: 'Visiting card design.pdf', pdf: { title: 'Visiting Card', subtitle: '500 cards · colour · both sides · matte', accent: '#0f766e' } }],
       steps: [
-        { h: 1, proof: { name: 'Visiting card proof.png', art: { style: 'card', paper: [3.5, 2], accent: '#0f766e', title: 'Pooja', sub: 'Boutique & tailoring' } }, note: 'Visiting card proof – front side. The back stays the same as your old card.' },
+        { h: 1, proof: { name: 'Visiting card design.png', art: { style: 'card', paper: [3.5, 2], accent: '#0f766e', title: 'Pooja', sub: 'Boutique & tailoring' } }, note: 'Visiting card design – front side. The back stays the same as your old card.' },
         { h: 3, by: 'customer', to: 'changes_requested', note: 'Please make the phone number bold and remove the fax line.' },
       ],
     },
@@ -123,7 +123,7 @@ function samplePlan(nowMs, todayMs) {
       data: { customer_name: 'Priya', customer_mobile: '88xxxxxx78', size: 'A5', quantity: 1000, color_mode: 'color', sides: 'both', notes: 'Sample order – Coaching class pamphlets, 1000 copies. Please check the spelling before printing.' },
       files: [{ name: 'Pamphlet A5 final.pdf', pdf: { title: 'Admissions Open Pamphlet', subtitle: 'A5 · 1000 copies · colour · both sides', accent: '#f97316' } }],
       steps: [
-        { h: 0.7, proof: { name: 'Pamphlet proof.png', art: { style: 'band', paper: [148, 210], accent: '#f97316', title: 'Bright Classes', sub: 'Admissions open' } }, note: 'Pamphlet proof attached – please check the class timings and phone number.' },
+        { h: 0.7, proof: { name: 'Pamphlet design.png', art: { style: 'band', paper: [148, 210], accent: '#f97316', title: 'Bright Classes', sub: 'Admissions open' } }, note: 'Pamphlet design attached – please check the class timings and phone number.' },
       ],
     },
     {
@@ -328,7 +328,7 @@ function customerFileBytes(f, orderNo) {
 }
 
 const proofBytes = (p, orderNo) =>
-  cached(`proof:${orderNo}:${p.name}`, () => artImage(p.art, { label: 'Sample proof', tagColor: '#f97316', caption: `Proof for order P-${orderNo} - Brighton Print demo` }));
+  cached(`proof:${orderNo}:${p.name}`, () => artImage(p.art, { label: 'Design preview', tagColor: '#f97316', caption: `Design preview for order P-${orderNo} - Brighton Print demo` }));
 
 // ---------- reset ----------
 const iso = (ms) => new Date(ms).toISOString();

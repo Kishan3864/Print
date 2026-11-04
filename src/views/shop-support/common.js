@@ -84,6 +84,7 @@ export function thread(messages, { viewer, shop }) {
 
 // ---------- notifications ----------
 const KIND = {
+  order: { ic: 'orders', tone: 'orange', label: 'Order' },
   payment: { ic: 'rupee', tone: 'ok', label: 'Payment' },
   success: { ic: 'check', tone: 'ok', label: 'Done' },
   support: { ic: 'chat', tone: 'blue', label: 'Support' },
@@ -102,12 +103,12 @@ export function notificationItem(n) {
   const k = kindOf(n.kind);
   const unread = !n.read_at;
   const href = safeLocalLink(n.link);
-  return html`<li class="sup-note${unread ? ' is-unread' : ''}">
+  return html`<li class="sup-note sup-note-${k.tone}${unread ? ' is-unread' : ''}">
     <span class="sup-note-ic sup-tone-${k.tone}" title="${k.label}">${sicon(k.ic)}</span>
     <div class="sup-note-main">
-      <p class="sup-note-title">${href ? html`<a class="sup-stretch" href="${href}">${n.title}</a>` : n.title}${unread ? html`<span class="sup-new-dot"><span class="sr-only">New</span></span>` : ''}</p>
+      <p class="sup-note-title">${unread ? html`<span class="sup-new-dot"><span class="sr-only">New: </span></span>` : ''}${href ? html`<a class="sup-stretch" href="${href}">${n.title}</a>` : n.title}</p>
       ${n.body ? html`<p class="sup-note-body">${n.body}</p>` : ''}
-      <p class="sup-note-time"><time datetime="${n.created_at}" title="${formatDate(n.created_at)} ${formatTime(n.created_at)}">${timeAgo(n.created_at)}</time>${href ? html`<span class="sup-note-open">Open ${sicon('chevron')}</span>` : ''}</p>
+      <p class="sup-note-time"><span class="sup-note-kind">${k.label}</span><span aria-hidden="true">·</span><time datetime="${n.created_at}" title="${formatDate(n.created_at)} ${formatTime(n.created_at)}">${timeAgo(n.created_at)}</time>${href ? html`<span class="sup-note-open">Open ${sicon('chevron')}</span>` : ''}</p>
     </div>
   </li>`;
 }

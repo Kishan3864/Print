@@ -12,7 +12,7 @@ import { render } from '../views/layout.js';
 import { linkView, posterView } from '../views/shop-settings/link.js';
 import { settingsView } from '../views/shop-settings/settings.js';
 
-// Shop area: "Link & QR", counter poster, QR images and Settings.
+// Shop area: "Share link" page, counter poster, QR images and Account (settings).
 // Mounted under the /shop gate, so req.shop and req.shopState are set.
 
 const router = Router();
@@ -198,7 +198,7 @@ router.post('/settings', actionLimiter, demoLocked, logoUpload, (req, res, next)
     discardUploads(req);
     delete fields.brand_color;
     updateShopSettings(shop.id, fields);
-    flash(req, 'info', 'Settings saved. Logo and brand colour are part of the Pro plan – upgrade in Plan & billing to use them.');
+    flash(req, 'info', 'Settings saved. Logo and brand colour are part of the Pro plan – upgrade in Account → Plan & payments to use them.');
     return res.redirect('/shop/settings');
   }
   try {

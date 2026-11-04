@@ -9,15 +9,15 @@ export const NOTIFY_LINKS = [
   ['', 'No link'],
   ['/shop', 'Orders'],
   ['/shop/billing', 'Plan & billing'],
-  ['/shop/link', 'Link & QR'],
-  ['/shop/settings', 'Settings'],
-  ['/shop/support', 'Help & support'],
+  ['/shop/link', 'Share link (link & QR)'],
+  ['/shop/settings', 'Account / settings'],
+  ['/shop/support', 'Help'],
 ];
 
 export const NOTIFY_LIMITS = { titleMin: 3, titleMax: 120, bodyMax: 1000 };
 
 function notifyForm(res, { target, idp, submit, hint, confirm = '', disabled = false }) {
-  return html`<form class="sup-notify" method="post" action="/admin/notify"${confirm ? html` data-confirm="${confirm}"` : ''}>
+  return html`<form class="adm-notify" method="post" action="/admin/notify"${confirm ? html` data-confirm="${confirm}"` : ''}>
     ${csrfField(res)}
     <input type="hidden" name="shop_id" value="${target}">
     <div class="field">
@@ -28,14 +28,14 @@ function notifyForm(res, { target, idp, submit, hint, confirm = '', disabled = f
       <label for="${idp}-body">Message <span class="optional">optional</span></label>
       <textarea id="${idp}-body" name="body" rows="3" maxlength="${NOTIFY_LIMITS.bodyMax}" data-autogrow data-counter="${NOTIFY_LIMITS.bodyMax}"></textarea>
     </div>
-    <div class="sup-notify-row">
+    <div class="adm-notify-row">
       <div class="field">
         <label for="${idp}-link">Button opens <span class="optional">optional</span></label>
         <select id="${idp}-link" name="link">${NOTIFY_LINKS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
       </div>
-      <label class="sup-check" for="${idp}-important"><input type="checkbox" id="${idp}-important" name="important" value="1"><span>Mark as important</span></label>
+      <label class="adm-check" for="${idp}-important"><input type="checkbox" id="${idp}-important" name="important" value="1"><span>Mark as important</span></label>
     </div>
-    <div class="sup-notify-foot">
+    <div class="adm-notify-foot">
       <button type="submit" class="btn btn-primary"${disabled ? raw(' disabled') : ''} data-loading="Sending…">${sicon('send')}<span>${submit}</span></button>
       ${hint ? html`<span class="hint">${hint}</span>` : ''}
     </div>

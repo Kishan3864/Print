@@ -9,7 +9,7 @@ import { csrfField, icon } from '../components.js';
 /** Record a UPI / cash / bank payment and extend the shop's plan. */
 export function manualPaymentForm(res, shop) {
   if (isSampleShop(shop)) {
-    return html`<p class="hint bl-manual-off">${icon('info')} The shared sample demo shop cannot be billed.</p>`;
+    return html`<p class="hint adm-pay-off">${icon('info')} The shared sample demo shop cannot be billed.</p>`;
   }
   const plans = getPlans();
   const selected = plans.find((p) => p.key === shop.plan) || plans.find((p) => p.popular) || plans[0];
@@ -20,7 +20,7 @@ export function manualPaymentForm(res, shop) {
   const confirm = shop.is_demo
     ? `This is a demo shop. Recording a payment makes it live at /${shop.slug} and deletes its demo orders. Continue?`
     : '';
-  return html`<form method="post" action="/admin/shops/${shop.id}/payments" class="bl-manual" data-bl-manual data-prices="${JSON.stringify(prices)}"${confirm ? html` data-confirm="${confirm}"` : ''}>
+  return html`<form method="post" action="/admin/shops/${shop.id}/payments" class="adm-payform" data-bl-manual data-prices="${JSON.stringify(prices)}"${confirm ? html` data-confirm="${confirm}"` : ''}>
     ${csrfField(res)}
     <div class="form-row">
       <div class="field">
@@ -29,7 +29,7 @@ export function manualPaymentForm(res, shop) {
           ${plans.map((p) => html`<option value="${p.key}"${p.key === selected.key ? raw(' selected') : ''}>${p.name} – ${formatINR(p.monthly)}/mo · ${formatINR(p.yearly)}/yr${p.active ? '' : ' (hidden)'}</option>`)}
         </select>
       </div>
-      <fieldset class="field bl-manual-cycle">
+      <fieldset class="field adm-payform-cycle">
         <legend class="label">Billing cycle</legend>
         <div class="seg">
           ${Object.entries(CYCLES).map(
@@ -49,9 +49,9 @@ export function manualPaymentForm(res, shop) {
         <input id="${id('note')}" name="note" type="text" maxlength="200" autocomplete="off" placeholder="e.g. UPI ref 4321 0987 6543">
       </div>
     </div>
-    <p class="bl-manual-period">${icon('clock')}<span>New period starts <b>${formatDate(start)}</b> (monthly: till ${formatDate(periodEnd(start, 'monthly'))} · yearly: till ${formatDate(periodEnd(start, 'yearly'))}).${shop.status === 'paused' || shop.status === 'rejected' ? ' This also switches the shop back on.' : ''}</span></p>
+    <p class="adm-payform-period">${icon('clock')}<span>New period starts <b>${formatDate(start)}</b> (monthly: till ${formatDate(periodEnd(start, 'monthly'))} · yearly: till ${formatDate(periodEnd(start, 'yearly'))}).${shop.status === 'paused' || shop.status === 'rejected' ? ' This also switches the shop back on.' : ''}</span></p>
     <div class="form-actions">
-      <button class="btn btn-primary" type="submit">${icon('check')}<span>Record payment &amp; extend</span></button>
+      <button class="btn btn-primary" type="submit">${icon('check')}<span>Record payment &amp; extend plan</span></button>
     </div>
   </form>`;
 }

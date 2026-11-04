@@ -2,6 +2,7 @@ import { html, raw } from '../../lib/html.js';
 import { formatINR } from '../../services/billing.js';
 import { alert, csrfField, icon } from '../components.js';
 import { savingLabel, yearlySaving } from '../shop-billing/common.js';
+import { adminIcon } from '../admin/common.js';
 
 // /admin/plans – edit plan names, prices, storage, visibility and the "Most popular" badge.
 
@@ -13,7 +14,7 @@ function numberField({ id, name, label, value, error, prefix = '', suffix = '' }
     <div class="input-group">
       ${prefix ? html`<span class="input-addon">${prefix}</span>` : ''}
       <input id="${id}" name="${name}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="off" required value="${value}"${describedBy(id, error)}>
-      ${suffix ? html`<span class="input-addon bl-addon-end">${suffix}</span>` : ''}
+      ${suffix ? html`<span class="input-addon adm-addon-end">${suffix}</span>` : ''}
     </div>
     ${error ? html`<p class="field-error" id="${id}-error">${error}</p>` : ''}
   </div>`;
@@ -23,11 +24,11 @@ function planEditor(p, errors) {
   const e = errors[p.key] || {};
   const saving = Number.isFinite(Number(p.monthly)) && Number.isFinite(Number(p.yearly)) ? yearlySaving({ monthly: Number(p.monthly), yearly: Number(p.yearly) }) : null;
   const id = (f) => `bl-plan-${p.key}-${f}`;
-  return html`<fieldset class="card bl-plan-edit${p.active ? '' : ' is-off'}">
+  return html`<fieldset class="card adm-plan${p.active ? '' : ' is-off'}">
     <legend class="sr-only">${p.name || p.key} plan</legend>
-    <div class="bl-plan-edit-head">
-      <span class="bl-plan-key mono">${p.key}</span>
-      <label class="bl-switch"><input type="checkbox" name="active_${p.key}" value="1"${p.active ? raw(' checked') : ''}><span>Shown to shops</span></label>
+    <div class="adm-plan-head">
+      <h2 class="adm-plan-name">${p.name || p.key}<small>${p.key}</small></h2>
+      <label class="adm-switch"><input type="checkbox" name="active_${p.key}" value="1"${p.active ? raw(' checked') : ''}><span>Shown to shops</span></label>
     </div>
     <div class="field${e.name ? ' has-error' : ''}">
       <label for="${id('name')}">Plan name</label>
@@ -38,29 +39,28 @@ function planEditor(p, errors) {
       ${numberField({ id: id('monthly'), name: `monthly_${p.key}`, label: 'Monthly price', value: p.monthly, error: e.monthly, prefix: '₹' })}
       ${numberField({ id: id('yearly'), name: `yearly_${p.key}`, label: 'Yearly price', value: p.yearly, error: e.yearly, prefix: '₹' })}
     </div>
-    <p class="bl-plan-edit-save">${saving ? html`${icon('check')}<span>Yearly saves ${formatINR(saving.save)} · shown as “${savingLabel(saving)}”</span>` : html`${icon('info')}<span>Yearly is not cheaper than 12 × monthly – no saving is shown.</span>`}</p>
+    <p class="adm-plan-save">${saving ? html`${icon('check')}<span>Yearly saves ${formatINR(saving.save)} · shown as “${savingLabel(saving)}”</span>` : html`${icon('info')}<span>Yearly is not cheaper than 12 × monthly – no saving is shown.</span>`}</p>
     ${numberField({ id: id('storage'), name: `storage_${p.key}`, label: 'File storage', value: p.storageGb, error: e.storageGb, suffix: 'GB' })}
-    <label class="bl-radio"><input type="radio" name="popular" value="${p.key}"${p.popular ? raw(' checked') : ''}><span>Mark as “Most popular”</span></label>
+    <label class="adm-radio"><input type="radio" name="popular" value="${p.key}"${p.popular ? raw(' checked') : ''}><span>Mark as “Most popular”</span></label>
   </fieldset>`;
 }
 
 export function plansView(res, { plans, errors = {}, formError = '' }) {
   const nonePopular = !plans.some((p) => p.popular);
-  return html`<div class="container bl-admin">
-    <header class="page-head">
+  return html`<div class="container adm">
+    <div class="adm-pagehead">
       <div>
-        <p class="eyebrow">Billing</p>
+        <p class="adm-kicker">Whole rupees · changes apply to new payments only</p>
         <h1>Plans &amp; prices</h1>
-        <p>Prices are in whole rupees. Changes apply to new payments – shops that already paid keep their period.</p>
       </div>
-      <div class="btn-row"><a class="btn btn-secondary" href="/admin/payments">${icon('shield')}<span>Payments</span></a></div>
-    </header>
+      <div class="adm-pagehead-actions"><a class="btn btn-secondary" href="/admin/payments">${adminIcon('rupee')}<span>Payments</span></a></div>
+    </div>
     ${formError ? alert('danger', formError) : ''}
-    <form method="post" action="/admin/plans" class="bl-plans-form" novalidate>
+    <form method="post" action="/admin/plans" class="adm-plans-form" novalidate>
       ${csrfField(res)}
-      <div class="bl-plan-edits">${plans.map((p) => planEditor(p, errors))}</div>
-      <div class="card card-pad bl-plans-foot">
-        <label class="bl-radio"><input type="radio" name="popular" value=""${nonePopular ? raw(' checked') : ''}><span>No “Most popular” badge</span></label>
+      <div class="adm-plans">${plans.map((p) => planEditor(p, errors))}</div>
+      <div class="card adm-plans-foot">
+        <label class="adm-radio"><input type="radio" name="popular" value=""${nonePopular ? raw(' checked') : ''}><span>No “Most popular” badge</span></label>
         <button class="btn btn-primary btn-lg" type="submit">${icon('check')}<span>Save plans</span></button>
       </div>
     </form>

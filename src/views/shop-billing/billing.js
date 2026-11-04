@@ -1,13 +1,13 @@
 import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
-import { formatDate } from '../../lib/util.js';
+import { formatDate, formatDateTime } from '../../lib/util.js';
 import { CYCLES, daysLeft, featureList, formatINR, getPlan } from '../../services/billing.js';
-import { formatDateTime } from '../../lib/util.js';
 import { orderFormUrl } from '../../services/notify.js';
 import { csrfField, icon } from '../components.js';
 import { METHOD_SHORT, cell, cycleLabel, paise, periodText, plural, savingLabel, yearlySaving } from './common.js';
 
-// /shop/billing – "Plan & billing": status card, plan picker, payment history.
+// /shop/billing – "Plan & payments": one calm status card; when the plan is active,
+// renew/change and the payment history stay folded away.
 
 const SUPPORT_BILLING = '/shop/support?new=billing';
 
@@ -39,138 +39,119 @@ function periodBar(left, total) {
   return html`<progress class="bl-meter" max="${max}" value="${left + 1}" aria-hidden="true"></progress>`;
 }
 
-function statusCard(shop, mode, current = null) {
+/** Card shell: icon, kicker, title, text, optional days block, extra content below. */
+function statusShell({ tone, ic, kicker, title, text = '', days = '', extra = '' }) {
+  return html`<section class="card bl-status bl-tone-${tone}" aria-labelledby="bl-status-title">
+    <div class="bl-status-main${days ? ' has-days' : ''}">
+      <span class="bl-status-ic">${icon(ic)}</span>
+      <div class="bl-status-copy">
+        <p class="bl-kicker">${kicker}</p>
+        <h2 class="bl-status-title" id="bl-status-title">${title}</h2>
+        ${text ? html`<p class="bl-status-text">${text}</p>` : ''}
+      </div>
+      ${days}
+    </div>
+    ${extra}
+  </section>`;
+}
+
+function statusCard(shop, mode) {
   const plan = getPlan(shop.plan);
   const left = daysLeft(shop);
-  const liveLink = `${config.baseUrl}/${shop.slug}`;
 
   if (mode === 'sample') {
-    return html`<section class="card bl-status bl-tone-info" aria-labelledby="bl-status-title">
-      <div class="bl-status-main">
-        <span class="bl-status-ic">${icon('sparkle')}</span>
-        <div class="bl-status-copy">
-          <p class="bl-kicker">Sample shop</p>
-          <h2 class="bl-status-title" id="bl-status-title">This is the shared demo shop</h2>
-          <p class="bl-status-text">Everyone trying Brighton Print uses this shop, so payments are switched off here and the sample data resets every ${config.demo.resetHours} hours. Want to try it with your own shop name and link?</p>
-          <div class="btn-row bl-status-actions">
-            <a class="btn btn-primary" href="/register">${icon('sparkle')}<span>Register your shop</span></a>
-            <a class="btn btn-secondary" href="/register">${icon('store')}<span>Register my shop</span></a>
-          </div>
-          <p class="hint">Your own demo is free for ${config.demo.trialDays} days – no payment needed.</p>
-        </div>
-      </div>
-    </section>`;
+    return statusShell({
+      tone: 'info',
+      ic: 'sparkle',
+      kicker: 'Sample shop',
+      title: 'This is the shared demo shop',
+      text: `Payments are off here and the sample data resets every ${config.demo.resetHours} hours. Try it with your own shop name and link – free for ${config.demo.trialDays} days.`,
+      extra: html`<div class="btn-row bl-status-actions"><a class="btn btn-primary" href="/register">${icon('store')}<span>Register your shop</span></a></div>`,
+    });
   }
 
   if (mode === 'paused') {
-    return html`<section class="card bl-status bl-tone-danger" aria-labelledby="bl-status-title">
-      <div class="bl-status-main">
-        <span class="bl-status-ic">${icon('alert')}</span>
-        <div class="bl-status-copy">
-          <p class="bl-kicker">Account paused</p>
-          <h2 class="bl-status-title" id="bl-status-title">Your account is paused</h2>
-          <p class="bl-status-text">Your order link is not taking new orders right now. Please contact support and we will help you switch it back on.</p>
-          <div class="btn-row bl-status-actions"><a class="btn btn-primary" href="${SUPPORT_BILLING}">${icon('mail')}<span>Contact support</span></a></div>
-        </div>
-      </div>
-    </section>`;
+    return statusShell({
+      tone: 'danger',
+      ic: 'alert',
+      kicker: 'Account paused',
+      title: 'Your account is paused',
+      text: 'Your order link is not taking new orders. Message us and we will help you switch it back on.',
+      extra: html`<div class="btn-row bl-status-actions"><a class="btn btn-primary" href="${SUPPORT_BILLING}">${icon('mail')}<span>Message us</span></a></div>`,
+    });
   }
 
   if (mode === 'demo') {
     const ended = left == null || left < 0;
     const daysTotal = left == null ? 0 : left + 1;
-    return html`<section class="card bl-status ${ended ? 'bl-tone-danger' : 'bl-tone-info'}" aria-labelledby="bl-status-title">
-      <div class="bl-status-main${ended ? '' : ' has-days'}">
-        <span class="bl-status-ic">${icon(ended ? 'alert' : 'sparkle')}</span>
-        <div class="bl-status-copy">
-          <p class="bl-kicker">Demo shop</p>
-          <h2 class="bl-status-title" id="bl-status-title">${ended ? 'Your demo has ended' : `Demo – ${daysTotal === 1 ? 'last day today' : `${daysTotal} days left`}`}</h2>
-          <p class="bl-status-text">${ended ? 'Your test order link is closed.' : 'Your order link works for testing.'} Go live to keep your shop and start taking real orders at:</p>
-          <p class="bl-golive-link"><span class="mono">${liveLink}</span></p>
-          <p class="hint">Demo orders are cleared when you go live, so you start fresh.</p>
-        </div>
-        ${ended ? '' : daysBlock(daysTotal, daysTotal === 1 ? 'day left' : 'days left')}
-      </div>
-      ${ended ? '' : periodBar(left, config.demo.trialDays)}
-    </section>`;
+    return statusShell({
+      tone: ended ? 'danger' : 'info',
+      ic: ended ? 'alert' : 'sparkle',
+      kicker: 'Demo shop',
+      title: ended ? 'Your demo has ended' : daysTotal === 1 ? 'Demo – last day today' : `Demo – ${daysTotal} days left`,
+      text: html`${ended ? 'Your test link is closed.' : 'Your link works for testing.'} Go live to take real orders at <span class="bl-golive-link mono">${config.baseUrl.replace(/^https?:\/\//, '')}/${shop.slug}</span>`,
+      days: ended ? '' : daysBlock(daysTotal, daysTotal === 1 ? 'day left' : 'days left'),
+      extra: html`${ended ? '' : periodBar(left, config.demo.trialDays)}<p class="hint bl-status-hint">Demo orders are cleared when you go live, so you start fresh.</p>`,
+    });
   }
 
   if (mode === 'pending') {
-    return html`<section class="card bl-status bl-tone-info" aria-labelledby="bl-status-title">
-      <div class="bl-status-main">
-        <span class="bl-status-ic">${icon('store')}</span>
-        <div class="bl-status-copy">
-          <p class="bl-kicker">Welcome to Brighton Print</p>
-          <h2 class="bl-status-title" id="bl-status-title">Choose a plan to start taking orders</h2>
-          <p class="bl-status-text">Your order link opens the moment your payment is done:</p>
-          <p class="bl-golive-link"><span class="mono">${orderFormUrl(shop)}</span></p>
-        </div>
-      </div>
-      <ol class="bl-steps" aria-label="How it works">
-        <li><span>1</span>Pick a plan below</li>
-        <li><span>2</span>Pay on PayU's secure page</li>
-        <li><span>3</span>Your link is live – share it</li>
-      </ol>
-    </section>`;
+    return statusShell({
+      tone: 'info',
+      ic: 'store',
+      kicker: 'Welcome to Brighton Print',
+      title: 'Choose a plan to start',
+      text: html`Your order link opens the moment you pay: <span class="bl-golive-link mono">${orderFormUrl(shop).replace(/^https?:\/\//, '')}</span>`,
+      extra: html`<ol class="bl-steps" aria-label="How it works">
+        <li><span>1</span>Pick a plan</li>
+        <li><span>2</span>Pay by UPI, card or net banking</li>
+        <li><span>3</span>Your link is live</li>
+      </ol>`,
+    });
   }
 
   const name = plan ? plan.name : 'Your';
-  const cycle = shop.billing_cycle ? ` · ${cycleLabel(shop.billing_cycle)}` : '';
+  const cycle = shop.billing_cycle ? html` <span class="bl-status-cycle">· ${cycleLabel(shop.billing_cycle)}</span>` : '';
   if (mode === 'expired') {
-    return html`<section class="card bl-status bl-tone-danger" aria-labelledby="bl-status-title">
-      <div class="bl-status-main">
-        <span class="bl-status-ic">${icon('alert')}</span>
-        <div class="bl-status-copy">
-          <p class="bl-kicker">${name} plan${cycle}</p>
-          <h2 class="bl-status-title" id="bl-status-title">Your plan ended on ${formatDate(shop.paid_until)}</h2>
-          <p class="bl-status-text">Your order link is closed. Renew below to reopen it straight away – your orders and settings are safe.</p>
-        </div>
-      </div>
-    </section>`;
+    return statusShell({
+      tone: 'danger',
+      ic: 'alert',
+      kicker: 'Plan ended',
+      title: html`${name} plan${cycle}`,
+      text: html`Ended on <b>${formatDate(shop.paid_until)}</b> – your order link is closed. Renew below to open it again. Your orders and settings are safe.`,
+    });
   }
 
-  // active
+  // active: compact
   const soon = left != null && left <= 7;
   const total = shop.billing_cycle === 'yearly' ? 365 : 30;
-  return html`<section class="card bl-status ${soon ? 'bl-tone-warn' : 'bl-tone-ok'}" aria-labelledby="bl-status-title">
-    <div class="bl-status-main has-days">
-      <span class="bl-status-ic">${icon(soon ? 'clock' : 'check')}</span>
-      <div class="bl-status-copy">
-        <p class="bl-kicker">Current plan</p>
-        <h2 class="bl-status-title" id="bl-status-title">${name} plan${cycle}</h2>
-        <p class="bl-status-text">Active till <b>${formatDate(shop.paid_until)}</b>${left === 0 ? ' – ends today' : ''}${soon ? '. Renew now to avoid a break.' : ''}</p>
-        ${current
-          ? html`<dl class="bl-facts">
-              <div><dt>Status</dt><dd><span class="pill pill-shop-active">Active</span></dd></div>
-              <div><dt>Started</dt><dd>${formatDate(current.period_start)}</dd></div>
-              <div><dt>Ends</dt><dd>${formatDate(current.period_end)}, 11:59 pm</dd></div>
-              <div><dt>Paid</dt><dd>${formatINR(current.amount_paise / 100)} on ${formatDateTime(current.paid_at)}</dd></div>
-            </dl>`
-          : ''}
-        <ul class="bl-feats">${featureList(shop.plan).map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}</ul>
-      </div>
-      ${left === 0 ? daysBlock('0', 'ends today') : daysBlock(left, left === 1 ? 'day left' : 'days left')}
-    </div>
-    ${periodBar(left, total)}
-  </section>`;
+  return statusShell({
+    tone: soon ? 'warn' : 'ok',
+    ic: soon ? 'clock' : 'check',
+    kicker: soon ? 'Renew soon' : 'Active',
+    title: html`${name} plan${cycle}`,
+    text: html`Active till <b>${formatDate(shop.paid_until)}</b>${left === 0 ? ' – ends today' : ''}.${soon ? ' Renew now so your link never stops.' : ''}`,
+    days: left === 0 ? daysBlock('0', 'ends today') : daysBlock(left, left === 1 ? 'day left' : 'days left'),
+    extra: periodBar(left, total),
+  });
 }
 
 // ---------- plan picker ----------
 function payLabel(mode, plan, isCurrent) {
-  if (mode === 'pending') return (p) => `Pay ${p} & activate`;
+  if (mode === 'pending') return (p) => `Pay ${p} & start`;
   if (mode === 'demo') return (p) => `Go live · ${p}`;
   if (isCurrent) return (p) => `Renew · ${p}`;
   return (p) => `Switch to ${plan.name} · ${p}`;
 }
 
 const BLURB = {
-  starter: 'For a small counter getting started.',
-  pro: 'For busy shops with orders every day.',
-  business: 'For high volume and big design files.',
+  starter: 'For a small counter.',
+  pro: 'For busy shops, orders every day.',
+  business: 'For big files and high volume.',
 };
 
-// Every plan has every feature – only storage differs – so features are listed once.
-const INCLUDED = ['Unlimited orders & customers', 'Own order link & QR poster', 'Proofs & one-tap approval', 'WhatsApp ready messages', 'Help & support'];
+// Every plan has the core features – storage and limits differ – so the basics are listed once.
+const INCLUDED = ['Unlimited orders', 'Your own order link & QR', 'Customer OK on design previews', 'WhatsApp messages', 'Help from us'];
 
 const isLive = (mode) => mode === 'active' || mode === 'expired';
 
@@ -209,7 +190,7 @@ function planCard(plan, { mode, shop, canPay, featured, chosen }) {
       <ul class="bl-feats">${featureList(plan.key).map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}</ul>
     </div>
     ${showButton
-      ? html`<button class="btn ${isFeatured ? 'btn-primary' : 'btn-secondary'} btn-block bl-pay" type="submit" name="plan" value="${plan.key}" data-loading="Opening secure payment…"${canPay ? '' : raw(' disabled')}>
+      ? html`<button class="btn ${isFeatured ? 'btn-primary' : 'btn-secondary'} btn-lg btn-block bl-pay" type="submit" name="plan" value="${plan.key}" data-loading="Opening secure payment…"${canPay ? '' : raw(' disabled')}>
           <span class="bl-when-m">${label(monthly)}</span><span class="bl-when-y">${label(yearly)}</span>
         </button>`
       : ''}
@@ -222,21 +203,22 @@ function cycleToggle(plans, selected) {
   // The radios sit before the toggle and the cards so CSS (~) can switch the prices without JS.
   return html`<input class="bl-cycle-input" type="radio" name="cycle" value="monthly" id="bl-cycle-monthly"${selected === 'monthly' ? raw(' checked') : ''}>
     <input class="bl-cycle-input" type="radio" name="cycle" value="yearly" id="bl-cycle-yearly"${selected === 'yearly' ? raw(' checked') : ''}>
-    <div class="bl-toggle">
+    <div class="bl-toggle" role="group" aria-label="Pay monthly or yearly">
       <label for="bl-cycle-monthly" class="bl-toggle-m">${CYCLES.monthly}</label>
       <label for="bl-cycle-yearly" class="bl-toggle-y">${CYCLES.yearly}${best ? html` <span class="bl-toggle-save">${best}</span>` : ''}</label>
     </div>`;
 }
 
 const PICKER_TITLE = {
-  pending: ['Choose your plan', 'All plans include everything – they differ only in file storage. Change any time.'],
-  demo: ['Go live – choose a plan', 'Keep your link, start taking real orders. All plans include everything; they differ only in file storage.'],
-  active: ['Renew or change plan', 'Renewing early adds time after your current end date – you never lose days.'],
-  expired: ['Renew your plan', 'Your order link reopens as soon as the payment is done.'],
-  sample: ['Plans & pricing', 'Simple pricing for every print shop. All plans include everything; they differ only in file storage.'],
+  pending: ['Choose your plan', 'All plans have the same features – bigger plans store more files. Change any time.'],
+  demo: ['Go live – choose a plan', 'Keep your link and start taking real orders.'],
+  active: ['', ''],
+  expired: ['Renew your plan', 'Your order link opens again as soon as you pay.'],
+  sample: ['Plans & prices', 'Simple prices for every print shop.'],
 };
 
-function planPicker(res, { shop, mode, plans, razorpayOn, choice }) {
+/** inFold: the picker sits inside the "Renew or change plan" fold (no own heading). */
+function planPicker(res, { shop, mode, plans, razorpayOn, choice, inFold = false }) {
   if (mode === 'paused' || !plans.length) return '';
   const canPay = razorpayOn && mode !== 'sample';
   const [title, sub] = PICKER_TITLE[mode];
@@ -244,19 +226,14 @@ function planPicker(res, { shop, mode, plans, razorpayOn, choice }) {
   const chosen = mode !== 'sample' && has(choice.plan) ? choice.plan : '';
   const featured = chosen || (isLive(mode) && has(shop.plan) ? shop.plan : plans.find((p) => p.popular)?.key || '');
   const selected = choice.cycle || (shop.billing_cycle === 'yearly' ? 'yearly' : 'monthly');
-  return html`<section class="bl-section" aria-labelledby="bl-plans-title">
-    <div class="bl-section-head">
-      <h2 id="bl-plans-title">${title}</h2>
-      <p>${sub}</p>
-    </div>
-    ${razorpayOn || mode === 'sample'
+  const body = html`${razorpayOn || mode === 'sample'
       ? ''
       : html`<div class="bl-setup" role="note">
           <span class="bl-setup-ic">${icon('info')}</span>
           <div>
             <b>Online payment is being set up.</b>
-            <p>Meanwhile, pay by UPI to Brighton Solution and raise a ticket with the payment screenshot – we will switch your shop on quickly.</p>
-            <a class="btn btn-secondary btn-sm" href="${SUPPORT_BILLING}">${icon('mail')}<span>Raise a ticket</span></a>
+            <p>Pay by UPI to Brighton Solution and send us the screenshot – we switch your shop on quickly.</p>
+            <a class="btn btn-secondary btn-sm" href="${SUPPORT_BILLING}">${icon('mail')}<span>Message us</span></a>
           </div>
         </div>`}
     <form method="post" action="/shop/billing/pay" class="bl-picker">
@@ -267,80 +244,105 @@ function planPicker(res, { shop, mode, plans, razorpayOn, choice }) {
       </div>
     </form>
     <div class="bl-includes">
-      <h3>Every plan includes</h3>
+      <h3>Every plan has</h3>
       <ul>${INCLUDED.map((t) => html`<li>${icon('check')}<span>${t}</span></li>`)}</ul>
     </div>
     ${mode === 'sample'
       ? ''
       : html`<ul class="bl-trust">
-          <li>${icon('shield')}<span>Secure payment by PayU · UPI, cards, net banking</span></li>
-          <li>${icon('check')}<span>Shop switched on instantly after payment</span></li>
+          <li>${icon('shield')}<span>Secure payment by PayU</span></li>
+          <li>${icon('check')}<span>Shop on right after payment</span></li>
           <li>${icon('file')}<span>Receipt for every payment</span></li>
-        </ul>`}
+        </ul>`}`;
+  if (inFold) return body;
+  return html`<section class="bl-section" aria-labelledby="bl-plans-title">
+    <div class="bl-section-head">
+      <h2 id="bl-plans-title">${title}</h2>
+      <p>${sub}</p>
+    </div>
+    ${body}
   </section>`;
 }
 
 // ---------- history ----------
-function history(payments) {
-  if (!payments.length) return '';
-  return html`<section class="bl-section" aria-labelledby="bl-history-title">
-    <div class="bl-section-head"><h2 id="bl-history-title">Payment history</h2></div>
-    <div class="card bl-history">
-      <div class="table-wrap">
-        <table class="table table-cards bl-table bl-hist">
-          <thead><tr><th scope="col">Date</th><th scope="col">Plan</th><th scope="col">Period</th><th scope="col" class="num">Amount</th><th scope="col"><span class="sr-only">Receipt</span></th></tr></thead>
-          <tbody>
-            ${payments.map((p) => {
-              const plan = getPlan(p.plan);
-              return html`<tr${p.superseded_at ? raw(' class="is-superseded"') : ''}>
-                <td data-label="Date" class="bl-c-date">${formatDateTime(p.paid_at)}${p.superseded_at ? html`<br><small>Replaced by upgrade</small>` : ''}</td>
-                <td data-label="Plan" class="bl-c-plan">${cell(`${plan ? plan.name : p.plan} · ${cycleLabel(p.cycle)}`, METHOD_SHORT[p.method] || p.method)}</td>
-                <td data-label="Period" class="bl-c-period">${periodText(p)}</td>
-                <td data-label="Amount" class="num bl-c-amount"><b>${paise(p.amount_paise)}</b></td>
-                <td class="bl-cell-action bl-c-action"><a class="btn btn-ghost btn-sm" href="/shop/billing/receipt/${p.id}">${icon('file')}<span>Receipt</span></a></td>
-              </tr>`;
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>`;
+function historyTable(payments) {
+  return html`<div class="table-wrap bl-history">
+    <table class="table table-cards bl-table bl-hist">
+      <thead><tr><th scope="col">Date</th><th scope="col">Plan</th><th scope="col">Period</th><th scope="col" class="num">Amount</th><th scope="col"><span class="sr-only">Receipt</span></th></tr></thead>
+      <tbody>
+        ${payments.map((p) => {
+          const plan = getPlan(p.plan);
+          return html`<tr${p.superseded_at ? raw(' class="is-superseded"') : ''}>
+            <td data-label="Date" class="bl-c-date">${formatDateTime(p.paid_at)}${p.superseded_at ? html`<br><small>Replaced by upgrade</small>` : ''}</td>
+            <td data-label="Plan" class="bl-c-plan">${cell(`${plan ? plan.name : p.plan} · ${cycleLabel(p.cycle)}`, METHOD_SHORT[p.method] || p.method)}</td>
+            <td data-label="Period" class="bl-c-period">${periodText(p)}</td>
+            <td data-label="Amount" class="num bl-c-amount"><b>${paise(p.amount_paise)}</b></td>
+            <td class="bl-cell-action bl-c-action"><a class="btn btn-secondary btn-sm" href="/shop/billing/receipt/${p.id}">${icon('download')}<span>Receipt</span></a></td>
+          </tr>`;
+        })}
+      </tbody>
+    </table>
+  </div>`;
 }
 
-function helpCard(mode) {
+function historyFold(payments) {
+  if (!payments.length) return '';
+  const last = payments[0];
+  return html`<details class="card fold bl-fold" id="payments">
+    <summary>
+      <span class="fold-ic">${icon('file')}</span>
+      <span class="fold-title"><b>Payments &amp; receipts</b><small>${plural(payments.length, 'payment')} · last ${paise(last.amount_paise)} on ${formatDate(last.paid_at)}</small></span>
+    </summary>
+    <div class="fold-body">${historyTable(payments)}</div>
+  </details>`;
+}
+
+function helpLine(mode) {
   if (mode === 'sample' || mode === 'paused') return '';
   return html`<aside class="bl-help">
     <span class="bl-help-ic">${icon('info')}</span>
-    <div><b>Questions about your plan or a payment?</b><p>We usually reply within a few hours.</p></div>
-    <a class="btn btn-secondary btn-sm" href="${SUPPORT_BILLING}">Ask support</a>
+    <div><b>Question about a payment?</b><p>We usually reply within a few hours.</p></div>
+    <a class="btn btn-secondary btn-sm" href="${SUPPORT_BILLING}">Ask us</a>
   </aside>`;
 }
 
 export function billingView(res, { shop, state, sample, plans, payments, razorpayOn, choice = {} }) {
   const mode = billingMode(shop, state, sample);
-  const today = new Date().toISOString().slice(0, 10);
-  const current = payments.find((p) => !p.superseded_at && p.period_start <= today && p.period_end >= today) || null;
+  const left = daysLeft(shop);
+  const soon = mode === 'active' && left != null && left <= 7;
+  let main;
+  if (mode === 'active') {
+    // Calm: everything beyond the status card stays folded until asked for.
+    main = html`<details class="card fold bl-fold" id="renew"${choice.plan || soon ? raw(' open') : ''}>
+        <summary>
+          <span class="fold-ic">${icon('refresh')}</span>
+          <span class="fold-title"><b>Renew or change plan</b><small>Renew early – new days start after ${formatDate(shop.paid_until)}. Upgrade any time.</small></span>
+        </summary>
+        <div class="fold-body">${planPicker(res, { shop, mode, plans, razorpayOn, choice, inFold: true })}</div>
+      </details>
+      ${historyFold(payments)}`;
+  } else {
+    main = html`${planPicker(res, { shop, mode, plans, razorpayOn, choice })}
+      ${payments.length ? html`<div class="bl-section">${historyFold(payments)}</div>` : ''}`;
+  }
   return {
-    title: 'Plan & billing',
+    title: 'Plan & payments',
     variant: 'shop',
     active: 'billing',
     scripts: ['/js/shop.js', '/js/billing.js'],
-    body: html`<div class="container bl-page">
+    body: html`<div class="container-mid bl-page">
+      <a class="bl-back" href="/shop/settings">${icon('arrowLeft')}<span>Account</span></a>
       <header class="page-head bl-head">
         <div>
-          <h1>Plan &amp; billing</h1>
-          <p>Your Brighton Print plan, payments and receipts.</p>
+          <h1>Plan &amp; payments</h1>
+          <p>Your Brighton Print plan and receipts.</p>
         </div>
       </header>
-      ${statusCard(shop, mode, current)}
-      ${mode === 'active'
-        ? html`<details class="card bl-change"${choice.plan ? raw(' open') : ''}>
-            <summary class="bl-change-sum">${icon('settings')}<span><b>Change or renew plan</b><small>Upgrade any time – unused days are credited. Renew early – time is added after your end date.</small></span></summary>
-            ${planPicker(res, { shop, mode, plans, razorpayOn, choice })}
-          </details>`
-        : planPicker(res, { shop, mode, plans, razorpayOn, choice })}
-      ${history(payments)}
-      ${helpCard(mode)}
+      <div class="bl-stack">
+        ${statusCard(shop, mode)}
+        ${main}
+      </div>
+      ${helpLine(mode)}
     </div>`,
   };
 }
@@ -359,7 +361,7 @@ export function checkoutView(res, { payment, plan }) {
         <h1>Opening secure payment…</h1>
         <p class="lead">${plan ? plan.name : payment.plan} plan · ${cycleLabel(payment.cycle)} · <b>${paise(payment.amount_paise)}</b></p>
         <a class="btn btn-primary btn-lg btn-block" href="${payment.provider_link_url}" data-bl-autogo rel="noreferrer">${icon('shield')}<span>Continue to payment</span></a>
-        <p class="hint">You will pay on PayU's secure page (UPI, cards, net banking) and come straight back here.</p>
+        <p class="hint">You pay on PayU's secure page (UPI, cards, net banking) and come straight back here.</p>
         <a class="btn btn-ghost btn-sm" href="/shop/billing">${icon('arrowLeft')}<span>Back to plans</span></a>
       </div>
     </div>`,

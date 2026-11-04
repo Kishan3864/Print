@@ -11,7 +11,7 @@ export const trackUrl = (shop, order) => config.baseUrl + trackPath(shop, order)
 
 // ---------- WhatsApp (wa.me with a pre-written message) ----------
 export const waProofText = (shop, order) =>
-  `Hi ${order.customer_name}, your proof for order P-${order.order_no} at ${shop.name} is ready. Please check and approve here: ${trackUrl(shop, order)}`;
+  `Hi ${order.customer_name}, the design for your order P-${order.order_no} at ${shop.name} is ready to check. Please look and tap OK (or ask for changes) here:${trackUrl(shop, order)}`;
 
 export const waReadyText = (shop, order) =>
   `Hi ${order.customer_name}, your order P-${order.order_no} at ${shop.name} is ready for pickup.` +
@@ -63,7 +63,7 @@ export function emailCustomer(shop, order, kind) {
   const link = trackUrl(shop, order);
   const msg = {
     received: [`Order ${n} received – ${shop.name}`, `Hi ${order.customer_name},\n\nWe received your order ${n}. Track it here:\n${link}`],
-    proof: [`Proof ready for order ${n} – ${shop.name}`, `Hi ${order.customer_name},\n\nYour proof for order ${n} is ready. Please check it and approve, or ask for changes:\n${link}${order.proof_note ? `\n\nNote from the shop: ${order.proof_note}` : ''}`],
+    proof: [`Please check your design – order ${n} at ${shop.name}`, `Hi ${order.customer_name},\n\nThe design for your order ${n} is ready to check. Please look at it and tap OK, or ask for changes:\n${link}${order.proof_note ? `\n\nNote from the shop: ${order.proof_note}` : ''}`],
     ready: [`Order ${n} is ready for pickup – ${shop.name}`, `Hi ${order.customer_name},\n\nYour order ${n} is ready for pickup.\n${link}`],
   }[kind];
   if (!msg) return Promise.resolve(false);

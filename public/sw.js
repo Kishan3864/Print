@@ -1,7 +1,7 @@
 /* Brighton Print service worker: offline page + cached static assets.
    Pages are always fetched from the network; uploads, downloads, APIs and
    admin pages are never touched. Bump VERSION to drop old caches. */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const STATIC_CACHE = 'pd-static-' + VERSION;
 const PAGES_CACHE = 'pd-pages-' + VERSION;
 const OFFLINE_URL = '/offline.html';
@@ -10,8 +10,8 @@ const PRECACHE = [
   '/js/app.js',
   '/icons/icon-192.png',
   '/icons/favicon.svg',
-  '/fonts/jakarta/plus-jakarta-sans-latin-400-normal.woff2',
-  '/fonts/jakarta/plus-jakarta-sans-latin-700-normal.woff2',
+  '/fonts/poppins/poppins-latin-400-normal.woff2',
+  '/fonts/comfortaa/comfortaa-latin-700-normal.woff2',
 ];
 // Public marketing pages that may be shown from cache when offline.
 const OFFLINE_PAGES = ['/', '/demo'];

@@ -20,7 +20,7 @@
 @media (min-width: 900px) { .lp-hero-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 64px; } }
 .lp-hero-copy { max-width: 700px; }
 .lp-eyebrow { margin: 0 0 14px; font-size: .92rem; font-weight: 650; color: var(--primary); }
-.lp-title { margin: 0 0 18px; font-size: clamp(2rem, 1.5rem + 2.2vw, 3.1rem); font-weight: 800; line-height: 1.12; letter-spacing: -.035em; text-wrap: balance; }
+.lp-title { margin: 0 0 18px; font-size: clamp(2rem, 1.5rem + 2.2vw, 3.1rem); font-weight: 700; line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; }
 .lp-sub { max-width: 34em; margin: 0 0 28px; font-size: clamp(1.05rem, 1rem + .25vw, 1.17rem); line-height: 1.6; color: var(--text-2); }
 
 /* Phone mockup: plain white frame, customer's order tracking page. */
@@ -171,7 +171,7 @@
 .lp-price { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
 .lp-price p { margin: 0; }
 .lp-price-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
-.lp-price-main b { font-size: clamp(2rem, 1.8rem + .8vw, 2.4rem); font-weight: 800; line-height: 1.1; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.lp-price-main b { font-family: var(--font-display); font-size: clamp(2rem, 1.8rem + .8vw, 2.4rem); font-weight: 700; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .lp-price-main span { color: var(--muted); font-weight: 600; }
 .lp-price-sub { min-height: 1.5em; margin-top: 6px !important; color: var(--muted); font-size: .9rem; }
 .lp-save { color: var(--success); font-weight: 700; }

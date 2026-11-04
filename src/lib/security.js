@@ -3,7 +3,7 @@ import { rateLimit } from 'express-rate-limit';
 import { config } from '../config.js';
 import { meta } from '../db.js';
 import { flash, randomToken, safeEqual } from './util.js';
-import { getShopById } from '../services/shops.js';
+import { getShopById, todoCount } from '../services/shops.js';
 import { unreadAdminCount, unreadShopCount } from '../services/notifications.js';
 import { adminOpenTickets, shopUnreadTickets } from '../services/support.js';
 
@@ -83,6 +83,7 @@ export function loadSession(req, res, next) {
   if (req.shop) {
     res.locals.shopUnread = unreadShopCount(req.shop.id);
     res.locals.ticketsUnread = shopUnreadTickets(req.shop.id);
+    res.locals.ordersTodo = todoCount(req.shop.id);
   }
   // Flash messages are read once.
   res.locals.flash = Array.isArray(s.flash) ? s.flash : [];
