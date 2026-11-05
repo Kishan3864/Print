@@ -3,8 +3,8 @@ import { config } from '../config.js';
 import { ASSET_V } from '../lib/assets.js';
 import { flashList, icon } from './components.js';
 import { authHeader, publicHeader, siteFooter } from './chrome/public.js';
-import { shopHeader, shopStateBanner, shopTabbar } from './chrome/shop.js';
-import { adminHeader, adminTabbar } from './chrome/admin.js';
+import { shopHeader, shopSidebar, shopStateBanner, shopTabbar } from './chrome/shop.js';
+import { adminHeader, adminSidebar, adminTabbar } from './chrome/admin.js';
 import { customerFooter, customerHeader } from './chrome/customer.js';
 
 export { ASSET_V };
@@ -53,6 +53,7 @@ export function page(res, opts) {
   let header = '';
   let footer = '';
   let after = '';
+  let side = '';
   if (variant === 'public') {
     header = publicHeader(res, active);
     footer = siteFooter();
@@ -60,9 +61,11 @@ export function page(res, opts) {
     header = authHeader();
     footer = siteFooter();
   } else if (variant === 'shop') {
+    side = locals.shop ? shopSidebar(res, active) : '';
     header = html`${shopHeader(res, active)}${shopStateBanner(res)}`;
     after = shopTabbar(res, active);
   } else if (variant === 'admin') {
+    side = adminSidebar(res, active);
     header = adminHeader(res, active);
     after = adminTabbar(res, active);
   } else if (variant === 'customer' && brandShop) {
@@ -102,8 +105,10 @@ ${styles.map((s) => html`<link rel="stylesheet" href="${s}">`)}
 <script src="${asset('/js/live.js')}" defer></script>
 ${scripts.map((s) => html`<script src="${asset(s)}" defer></script>`)}
 </head>
-<body class="v-${variant}${bodyClass ? ' ' + bodyClass : ''}${isDemo ? ' is-demo' : ''}" data-csrf="${locals.csrf || ''}">
+<body class="v-${variant}${side ? ' has-side' : ''}${bodyClass ? ' ' + bodyClass : ''}${isDemo ? ' is-demo' : ''}" data-csrf="${locals.csrf || ''}">
 <a class="skip-link" href="#main">Skip to content</a>
+${side}
+${side ? raw('<div class="app-shell">') : ''}
 ${isDemo ? demoBanner(demoShop) : ''}
 ${header}
 <main id="main" class="main main-${variant}">
@@ -111,6 +116,7 @@ ${flashList(locals.flash)}
 ${body}
 </main>
 ${footer}
+${side ? raw('</div><div class="side-scrim" data-side-close hidden></div>') : ''}
 ${after}
 <div class="toasts" aria-live="polite" aria-atomic="false"></div>
 </body>

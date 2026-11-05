@@ -4,7 +4,7 @@ import { db, meta } from './db.js';
 import { config, paths } from './config.js';
 import { purgeExpiredFiles } from './services/orders.js';
 import * as demo from './services/demo.js';
-import { runReminders } from './services/billing.js';
+import { reconcilePayu, runReminders } from './services/billing.js';
 
 const HOUR = 60 * 60 * 1000;
 const STORED_RE = /^[a-f0-9]{32}\.[a-z0-9]{1,5}$/;
@@ -80,4 +80,11 @@ export function startJobs() {
   setInterval(runBilling, 6 * HOUR).unref();
   // Demo reset check every 10 minutes (resets every config.demo.resetHours).
   setInterval(() => maybeResetDemo(), 10 * 60 * 1000).unref();
+  // Unfinished online payments: confirm with PayU every 5 minutes (browser closed, webhook missed).
+  const reconcile = () =>
+    reconcilePayu()
+      .then((n) => n && console.log(`[payu] confirmed ${n} payment(s) on recheck`))
+      .catch((err) => console.error('[payu] recheck failed:', err.message));
+  setTimeout(reconcile, 30 * 1000).unref();
+  setInterval(reconcile, 5 * 60 * 1000).unref();
 }

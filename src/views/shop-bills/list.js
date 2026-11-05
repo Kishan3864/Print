@@ -42,7 +42,7 @@ function sortTh(f, key, label, cls = '') {
   return html`<th scope="col" class="${cls}"${aria}><a class="bi-sort${on ? ' is-on' : ''}" href="${listUrl({ ...f, sort: key, dir, page: 1 })}">${label}<span class="bi-sort-ic" aria-hidden="true">${on ? (f.dir === 'asc' ? '↑' : '↓') : '↕'}</span></a></th>`;
 }
 
-function row(b) {
+function row(b, res) {
   const more = b.line_count > 1 ? ` + ${b.line_count - 1} more` : '';
   return html`<tr class="bi-tr${b.status === 'cancelled' ? ' is-cancelled' : ''}">
     <td class="bi-c-no"><a class="bi-no" href="${billPath(b)}">${billNo(b)}</a><span class="bi-sub">${formatDate(b.bill_date)}</span></td>
@@ -50,7 +50,10 @@ function row(b) {
     <td class="bi-c-items"><span class="bi-items-text">${b.first_line || '—'}<span class="bi-more">${more}</span></span>${b.order_no ? html`<span class="bi-sub">Online order P-${b.order_no}</span>` : ''}${b.is_sample ? html`<span class="bi-sample">Sample</span>` : ''}</td>
     <td class="bi-c-total num"><b>${rs(b.total_paise)}</b></td>
     <td class="bi-c-status">${payPill(b)}</td>
-    <td class="bi-c-act"><a class="btn btn-ghost btn-sm btn-icon" href="${billPath(b)}/pdf?dl=1" title="Download PDF" aria-label="Download PDF of ${billNo(b)}">${icon('download')}</a></td>
+    <td class="bi-c-act"><span class="bi-acts">
+      <a class="btn btn-ghost btn-sm btn-icon" href="${billPath(b)}/pdf?dl=1" title="Download PDF" aria-label="Download PDF of ${billNo(b)}">${icon('download')}</a>
+      <form method="post" action="${billPath(b)}/delete" class="inline-form">${csrfField(res)}<button class="btn btn-ghost btn-sm btn-icon bi-del" type="submit" title="Delete bill" aria-label="Delete ${billNo(b)}" data-confirm="Delete bill ${billNo(b)} (${b.customer_name || 'Cash customer'}, ${rs(b.total_paise)}) for ever? This cannot be undone.">${shopIcon('trash')}</button></form>
+    </span></td>
   </tr>`;
 }
 
@@ -116,9 +119,9 @@ export function billsListView(d) {
           <th scope="col" class="bi-c-items">Items</th>
           ${sortTh(f, 'total', 'Total', 'bi-c-total num')}
           ${sortTh(f, 'due', 'Status', 'bi-c-status')}
-          <th scope="col" class="bi-c-act"><span class="sr-only">PDF</span></th>
+          <th scope="col" class="bi-c-act"><span class="sr-only">Actions</span></th>
         </tr></thead>
-        <tbody>${list.rows.map(row)}</tbody>
+        <tbody>${list.rows.map((b) => row(b, res))}</tbody>
       </table>
     </div>`;
   } else if (filtered) {

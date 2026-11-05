@@ -19,6 +19,7 @@ import shopRoutes from './routes/shop.js';
 import customerRoutes from './routes/customer.js';
 import adminBillingRoutes from './routes/admin-billing.js';
 import adminSupportRoutes from './routes/admin-support.js';
+import adminManageRoutes from './routes/admin-manage.js';
 import { adminDemoRouter, tryRouter } from './routes/demo-links.js';
 
 export function createApp() {
@@ -107,16 +108,26 @@ export function createApp() {
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
   // PayU posts the result back here from its own site (no session cookie, no CSRF token):
-  // the payment is identified by txnid and verified with PayU's reverse hash.
-  app.post('/pay/payu/return', express.urlencoded({ extended: false, limit: '50kb' }), (req, res) => {
+  // the payment is identified by txnid, checked with PayU's reverse hash, then confirmed with
+  // PayU's verify API before anything is switched on.
+  app.post('/pay/payu/return', express.urlencoded({ extended: false, limit: '50kb' }), async (req, res) => {
     let id = '';
     try {
-      const payment = handlePayuReturn(req.body || {});
+      const payment = await handlePayuReturn(req.body || {});
       id = payment.id;
     } catch (err) {
       console.error('[payu]', err.message);
     }
     res.redirect(303, id ? `/shop/billing/waiting/${id}` : '/shop/billing?payment=error');
+  });
+  // Server-to-server webhook (set it in the PayU dashboard): covers shops that close the browser.
+  app.post('/pay/payu/webhook', express.urlencoded({ extended: false, limit: '50kb' }), async (req, res) => {
+    try {
+      await handlePayuReturn(req.body || {});
+    } catch (err) {
+      console.error('[payu webhook]', err.message);
+    }
+    res.type('text').send('ok');
   });
 
   // Admin panel on its own host (ADMIN_HOST): admin.example.com/x is served as /admin/x,
@@ -183,6 +194,7 @@ export function createApp() {
   app.use('/admin', adminRoutes);
   app.use('/admin', requireAdmin, adminBillingRoutes);
   app.use('/admin', requireAdmin, adminSupportRoutes);
+  app.use('/admin', requireAdmin, adminManageRoutes);
   app.use('/admin', adminDemoRouter);
   app.use('/shop', shopRoutes);
   // Customer pages: live shops at /<slug>, demo shops at /demo/<slug>.

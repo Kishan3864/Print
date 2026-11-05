@@ -54,6 +54,7 @@
         var openDetails = Array.prototype.map.call(document.querySelectorAll('main details[open]'), function (d, i) { return i; });
         swap('main', doc);
         swap('header', doc);
+        swap('.app-side', doc);
         swap('.tabbar', doc);
         swap('[data-annc]', doc);
         var csrf = doc.body && doc.body.getAttribute('data-csrf');

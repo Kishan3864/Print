@@ -58,6 +58,8 @@ export const config = {
     // Until PayU approves live payments keep this false: only PAYMENT_TESTERS can pay.
     open: bool(env.PAYMENTS_OPEN, false),
     testers: (env.PAYMENT_TESTERS || '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean),
+    // Confirm every payment with PayU's verify API before switching anything on (keep true in production).
+    verify: bool(env.PAYU_VERIFY, true),
   },
   demo: {
     slug: 'demo-print-studio',

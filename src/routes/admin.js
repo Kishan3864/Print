@@ -23,6 +23,10 @@ import {
 import { isSampleShop, listPayments, revenueStats, shopPayments, storageCapBytes } from '../services/billing.js';
 import { adminOpenTickets, listAllTickets, listShopTickets } from '../services/support.js';
 import { notifyShop } from '../services/notifications.js';
+import { FEATURES, LIFETIME_END, LIMITS, getAddon, grantAddon, revokeAddon, saveOverrides, setCareUntil } from '../services/entitlements.js';
+import { audit, auditForShop, ipOf } from '../services/audit.js';
+import { shopConsents } from '../services/legal.js';
+import { publishShop } from '../lib/live.js';
 import { orderFormUrl, sendMail } from '../services/notify.js';
 import { messagePage, render } from '../views/layout.js';
 import { loginView } from '../views/admin/login.js';
@@ -120,7 +124,8 @@ const qRecentOrders = db.prepare(
    FROM orders o WHERE o.shop_id = ? ORDER BY o.id DESC LIMIT 10`
 );
 const qLiveFiles = db.prepare('SELECT COUNT(*) AS n FROM files WHERE shop_id = ? AND deleted_at IS NULL');
-const qSetPlan = db.prepare('UPDATE shops SET plan = ?, paid_until = ? WHERE id = ?');
+// A date-based plan is a subscription: a lifetime shop moved here gets a normal end date again.
+const qSetPlan = db.prepare("UPDATE shops SET plan = ?, paid_until = ?, billing_cycle = CASE WHEN billing_cycle = 'lifetime' THEN NULL ELSE billing_cycle END WHERE id = ?");
 const qSetPaidUntil = db.prepare('UPDATE shops SET paid_until = ? WHERE id = ?');
 const qActivateDemo = db.prepare("UPDATE shops SET status = 'active', paid_until = ? WHERE id = ? AND is_demo = 1");
 
@@ -273,6 +278,8 @@ router.get(SHOP, loadShop, (req, res) => {
       tickets: listShopTickets(shop.id),
       today: ymd(),
       reveal,
+      audit: auditForShop(shop.id, 30),
+      consents: shopConsents(shop.id, 5),
     }),
   });
 });
@@ -341,6 +348,7 @@ function extend(req, res) {
   const plan = pickPlan(req.body.plan) || pickPlan(shop.plan);
   if (!plan) return finish(req, res, shop, 'error', 'Choose a plan.');
   qSetPlan.run(plan, paid.date, shop.id);
+  audit({ actor: 'admin', shopId: shop.id, action: 'plan.set', detail: `${planName(plan)} till ${paid.date}`, ip: ipOf(req) });
   notifyShop(shop.id, {
     kind: 'success',
     title: wasExpired ? 'Your plan is active again' : 'Your plan was updated',
@@ -374,6 +382,84 @@ router.post(`${SHOP}/reset-password`, loadShop, blockSample, (req, res) => {
   setPassword(shop.id, password);
   req.session.pwReveal = { id: shop.id, pw: password };
   res.redirect(303, `/admin/shops/${shop.id}`);
+});
+
+// ---------- entitlements: lifetime, Updates & Support, add-ons, feature overrides ----------
+router.post(`${SHOP}/lifetime`, loadShop, blockSample, (req, res) => {
+  const shop = req.adminShop;
+  const plan = pickPlan(req.body.plan);
+  if (!plan) return finish(req, res, shop, 'error', 'Choose a plan.');
+  const note = cleanLine(req.body.note, 120);
+  const care = shop.care_until && shop.care_until > addDays(ymd(), 364) ? shop.care_until : addDays(ymd(), 364);
+  db.prepare(
+    "UPDATE shops SET status = 'active', is_demo = 0, plan = ?, billing_cycle = 'lifetime', paid_until = ?, care_until = ?, approved_at = COALESCE(approved_at, ?) WHERE id = ?"
+  ).run(plan, LIFETIME_END, care, new Date().toISOString(), shop.id);
+  audit({ actor: 'admin', shopId: shop.id, action: 'plan.lifetime', detail: `${planName(plan)} for life · Updates & Support till ${care}${note ? ` · ${note}` : ''}`, ip: ipOf(req) });
+  notifyShop(shop.id, { kind: 'success', title: `${planName(plan)} is yours for life`, body: `Updates & Support included till ${formatDate(care)}.`, link: '/shop/billing' });
+  publishShop(shop.id);
+  finish(req, res, shop, 'success', `${shop.name} now has ${planName(plan)} for life.`);
+});
+
+router.post(`${SHOP}/care`, loadShop, blockSample, (req, res) => {
+  const shop = req.adminShop;
+  const date = cleanLine(req.body.care_until, 10);
+  if (!validDate(date)) return finish(req, res, shop, 'error', 'Pick a date.');
+  setCareUntil(shop.id, date, { actor: 'admin', ip: ipOf(req), note: cleanLine(req.body.note, 120) });
+  finish(req, res, shop, 'success', `Updates & Support for ${shop.name} now runs till ${formatDate(date)}.`);
+});
+
+router.post(`${SHOP}/addons`, loadShop, blockSample, (req, res) => {
+  const shop = req.adminShop;
+  const key = cleanLine(req.body.addon, 30);
+  const mode = cleanLine(req.body.mode, 20);
+  const note = cleanLine(req.body.note, 120);
+  const addon = getAddon(key);
+  if (!addon) return finish(req, res, shop, 'error', 'Unknown add-on.');
+  try {
+    if (mode === 'revoke') {
+      revokeAddon(shop.id, key, { actor: 'admin', ip: ipOf(req), note });
+      notifyShop(shop.id, { kind: 'warn', title: `${addon.name} was switched off`, body: 'Your data is safe. Message us if this is a mistake.', link: '/shop/billing#addons' });
+      return finish(req, res, shop, 'success', `${addon.name} switched off for ${shop.name}.`);
+    }
+    let opts;
+    if (mode === 'free') opts = { cycle: 'free', endsOn: null };
+    else if (mode === 'free_until') {
+      const d = cleanLine(req.body.ends_on, 10);
+      if (!validDate(d) || d < ymd()) return finish(req, res, shop, 'error', 'Pick an end date from today on.');
+      opts = { cycle: 'free', endsOn: d };
+    } else if (mode === 'monthly' || mode === 'yearly') opts = { cycle: mode };
+    else return finish(req, res, shop, 'error', 'Choose how to switch it on.');
+    const row = grantAddon(shop.id, key, { ...opts, source: 'admin', actor: 'admin', ip: ipOf(req), note: note || 'Granted by Brighton Solution' });
+    notifyShop(shop.id, { kind: 'success', title: `${addon.name} is on for your shop`, body: row.ends_on ? `Active till ${formatDate(row.ends_on)}.` : 'No end date.', link: key === 'bills' ? '/shop/bills' : '/shop/billing#addons' });
+    finish(req, res, shop, 'success', `${addon.name} is on for ${shop.name}${row.ends_on ? ` till ${formatDate(row.ends_on)}` : ' with no end date'}.`);
+  } catch (err) {
+    finish(req, res, shop, 'error', err.message);
+  }
+});
+
+router.post(`${SHOP}/overrides`, loadShop, blockSample, (req, res) => {
+  const shop = req.adminShop;
+  const features = {};
+  const changes = [];
+  for (const f of FEATURES) {
+    if (f.core) continue;
+    const v = req.body[`f_${f.key}`];
+    if (v === 'on' || v === 'off') {
+      features[f.key] = v === 'on';
+      changes.push(`${f.key}=${v}`);
+    }
+  }
+  const limits = {};
+  for (const l of [...LIMITS, { key: 'storageGb', label: 'Storage', min: 1, max: 100000 }]) {
+    const typed = cleanLine(req.body[`l_${l.key}`], 10);
+    if (!typed) continue;
+    const n = Number(typed);
+    if (!Number.isInteger(n) || n < l.min || n > l.max) return finish(req, res, shop, 'error', `${l.label} must be a whole number from ${l.min} to ${l.max}.`);
+    limits[l.key] = n;
+    changes.push(`${l.key}=${n}`);
+  }
+  saveOverrides(shop.id, { features, limits }, { actor: 'admin', ip: ipOf(req), summary: changes.length ? changes.join(', ') : 'Back to plan defaults' });
+  finish(req, res, shop, 'success', changes.length ? `Saved for ${shop.name}: ${changes.join(', ')}.` : `${shop.name} follows its plan again.`);
 });
 
 router.post(`${SHOP}/note`, loadShop, (req, res) => {

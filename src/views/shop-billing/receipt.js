@@ -1,7 +1,7 @@
 import { html } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { formatDate, formatDateTime, prettyPhone } from '../../lib/util.js';
-import { getPlan } from '../../services/billing.js';
+import { paymentTitle } from '../../services/billing.js';
 import { icon, logoMark } from '../components.js';
 import { METHOD_LABEL, cycleLabel, paise, periodText } from './common.js';
 
@@ -10,8 +10,8 @@ import { METHOD_LABEL, cycleLabel, paise, periodText } from './common.js';
 const companyHost = config.companyUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 
 export function receiptView({ shop, payment }) {
-  const plan = getPlan(payment.plan);
-  const planName = plan ? plan.name : payment.plan;
+  const what = paymentTitle(payment);
+  const period = payment.cycle === 'lifetime' ? 'Lifetime' : payment.cycle === 'once' ? '—' : periodText(payment);
   const amount = paise(payment.amount_paise);
   return {
     title: `Receipt ${payment.reference}`,
@@ -60,8 +60,8 @@ export function receiptView({ shop, payment }) {
           <thead><tr><th scope="col">Description</th><th scope="col">Period</th><th scope="col" class="num">Amount</th></tr></thead>
           <tbody>
             <tr>
-              <td><b>Brighton Print ${planName} plan</b><span>${cycleLabel(payment.cycle)} subscription</span></td>
-              <td>${periodText(payment)}</td>
+              <td><b>Brighton Print – ${what}</b><span>${payment.product === 'plan' ? (payment.cycle === 'lifetime' ? 'Lifetime licence' : `${cycleLabel(payment.cycle)} subscription`) : payment.product === 'addon' ? 'Add-on' : payment.product === 'care' ? 'Updates & Support' : 'Service'}</span></td>
+              <td>${period}</td>
               <td class="num">${amount}</td>
             </tr>
           </tbody>
@@ -71,7 +71,7 @@ export function receiptView({ shop, payment }) {
         ${payment.note && payment.method === 'manual' ? html`<p class="bl-receipt-note"><b>Note:</b> ${payment.note}</p>` : ''}
 
         <footer class="bl-receipt-foot">
-          <p>Thank you for using Brighton Print. This payment covers your plan till <b>${formatDate(payment.period_end)}</b>.</p>
+          <p>Thank you for using Brighton Print. ${payment.cycle === 'lifetime' ? 'This is a one-time lifetime payment.' : payment.cycle === 'once' ? 'This payment is for the service named above.' : html`This payment covers the period till <b>${formatDate(payment.period_end)}</b>.`}</p>
           <p class="muted">Computer-generated receipt, no signature needed. Issued ${formatDateTime(payment.paid_at)}.</p>
         </footer>
       </article>

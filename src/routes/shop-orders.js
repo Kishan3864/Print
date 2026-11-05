@@ -5,10 +5,11 @@ import { clean, cleanLine, clampInt, flash, startOfTodayIso, ymd } from '../lib/
 import { STATUSES, STATUS_LABEL, TABS } from '../lib/status.js';
 import { actionLimiter } from '../lib/security.js';
 import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/uploads.js';
-import { isSampleShop, shopFeatures, storageCapBytes } from '../services/billing.js';
+import { isSampleShop, storageCapBytes } from '../services/billing.js';
+import { can } from '../services/entitlements.js';
 import { unreadShopCount } from '../services/notifications.js';
 import { shopCounts, storageUsed, todoCount } from '../services/shops.js';
-import { billForOrder } from '../services/bills.js';
+import { billForOrder, billsOn } from '../services/bills.js';
 import {
   reprintOrder,
   getOrderByNo,
@@ -122,7 +123,8 @@ router.get(`/orders/${NO}`, loadOrder, (req, res) => {
       trackUrl: trackUrl(shop, order),
       canEmail: mailEnabled() && Boolean(order.customer_email) && !shop.is_demo,
       limits: fileLimits({ uploadShop: shop }),
-      bill: billForOrder(shop.id, order.order_no),
+      billsOn: billsOn(shop),
+      bill: billsOn(shop) ? billForOrder(shop.id, order.order_no) : null,
     }),
   });
 });
@@ -164,8 +166,8 @@ router.post(`/orders/${NO}/status`, loadOrder, (req, res) => {
 
 // ---------- reprint: same details + latest files as a new order ----------
 router.post(`/orders/${NO}/reprint`, loadOrder, (req, res) => {
-  if (!shopFeatures(req.shop).reprint) {
-    flash(req, 'info', 'One-tap reprints are part of the Pro plan – upgrade in Plan & billing.');
+  if (!can(req.shop, 'reprint')) {
+    flash(req, 'info', 'One-tap reprints are not in your plan – upgrade in Plan & billing.');
     return res.redirect(303, back(req.order));
   }
   try {

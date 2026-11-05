@@ -1,6 +1,7 @@
 import { db, now } from '../db.js';
 import { addDays, clean, cleanLine, digits, randomToken, ymd } from '../lib/util.js';
 import { publishShop } from '../lib/live.js';
+import { can } from './entitlements.js';
 
 // The shop's own bills (separate from the plan payments in billing.js):
 //   items       – the shop's rate list (what it sells, unit, rate)
@@ -30,6 +31,20 @@ export const STARTER_ITEMS = [
   { name: 'Flex banner', unit: 'sq.ft', rate: 15 },
   { name: 'Design charges', unit: 'job', rate: 100 },
 ];
+
+// ---------- access ----------
+/** Bills is a feature of the plan or the Bills add-on (see entitlements.js). */
+export const billsOn = (shop) => can(shop, 'bills');
+
+/** Numbers for the admin shop page. */
+export const billUsage = (shopId) =>
+  db
+    .prepare(
+      `SELECT COUNT(*) AS bills, COALESCE(SUM(CASE WHEN status = 'issued' THEN total_paise END), 0) AS total,
+         MAX(created_at) AS last_at, (SELECT COUNT(*) FROM items WHERE shop_id = @id) AS items
+       FROM bills WHERE shop_id = @id`
+    )
+    .get({ id: shopId });
 
 // ---------- numbers ----------
 const MONEY_RE = /^(\d{1,9})(?:\.(\d{1,2}))?$/;
@@ -123,11 +138,14 @@ export function billSettings(shop) {
   } catch {
     /* defaults */
   }
-  const gstin = typeof s.gstin === 'string' && GSTIN_RE.test(s.gstin) ? s.gstin : '';
+  // GST invoices and the UPI pay QR are their own feature (bills_gst).
+  const gstOn = !shop || can(shop, 'bills_gst');
+  const gstin = gstOn && typeof s.gstin === 'string' && GSTIN_RE.test(s.gstin) ? s.gstin : '';
   return {
     gstin,
     gstRate: gstin && GST_RATES.includes(Number(s.gstRate)) ? Number(s.gstRate) : 0,
-    upi: typeof s.upi === 'string' && UPI_RE.test(s.upi) ? s.upi : '',
+    upi: gstOn && typeof s.upi === 'string' && UPI_RE.test(s.upi) ? s.upi : '',
+    gstOn,
     terms: typeof s.terms === 'string' ? s.terms.slice(0, 400) : DEFAULT_TERMS,
   };
 }
@@ -293,6 +311,18 @@ export function updateBill(shop, bill, data, { saveNew = false } = {}) {
 export function recordPayment(bill, amount, mode) {
   const paid = Math.min(bill.total_paise, bill.paid_paise + Math.max(0, amount));
   db.prepare('UPDATE bills SET paid_paise = ?, pay_mode = ?, updated_at = ? WHERE id = ? AND shop_id = ?').run(paid, PAY_MODES[mode] ? mode : bill.pay_mode, now(), bill.id, bill.shop_id);
+  publishShop(bill.shop_id);
+}
+
+/**
+ * Deletes a bill for good (lines go with it). When it was the newest bill its number is
+ * given back, so the next bill reuses it and the numbering has no gap.
+ */
+export function deleteBill(bill) {
+  db.transaction(() => {
+    db.prepare('DELETE FROM bills WHERE id = ? AND shop_id = ?').run(bill.id, bill.shop_id);
+    db.prepare('UPDATE shops SET next_bill_no = next_bill_no - 1 WHERE id = ? AND next_bill_no = ?').run(bill.shop_id, bill.bill_no + 1);
+  })();
   publishShop(bill.shop_id);
 }
 

@@ -42,7 +42,7 @@ export const RESERVED_SLUGS = new Set([
   'fonts', 'icons', 'img', 'images', 'uploads', 'files', 'file', 'brand', 'logo', 'offline', 'sw', 'manifest',
   'healthz', 'health', 'robots', 'favicon', 'about', 'help', 'support', 'terms', 'privacy', 'pricing', 'contact',
   'www', 'app', 'print', 'printdesk', 'brighton', 'brightonsolution', 'blog', 'docs', 'settings', 'order', 'orders',
-  'o', 'track', 'account', 'dashboard', 'root', 'system', 'null', 'undefined', 'test', 'mail', 'email',
+  'o', 'track', 'account', 'dashboard', 'refund-policy', 'refund', 'refunds', 'legal', 'pay', 'services', 'bill', 'bills', 'root', 'system', 'null', 'undefined', 'test', 'mail', 'email',
   config.demo.slug,
 ]);
 

@@ -50,6 +50,7 @@ export const defaultPaidUntil = (shop, today = ymd()) => {
 export function paidInfo(shop, today = ymd()) {
   if (isSampleShop(shop)) return { text: 'Sample shop · never expires', tone: 'muted', days: null };
   const what = shop.is_demo ? 'Demo' : 'Plan';
+  if (shop.billing_cycle === 'lifetime' && !shop.is_demo) return { text: 'Lifetime – never expires', tone: 'ok', days: null };
   if (!validDate(shop.paid_until)) return { text: shop.status === 'pending' ? 'Not paid yet' : 'No end date', tone: 'muted', days: null };
   const days = daysBetween(today, shop.paid_until);
   if (days < 0) return { text: `${what} ended ${-days} day${days === -1 ? '' : 's'} ago`, tone: 'danger', days };

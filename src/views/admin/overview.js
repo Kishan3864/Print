@@ -1,7 +1,7 @@
 import { html } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { formatBytes, formatDate, timeAgo } from '../../lib/util.js';
-import { CYCLES, formatINR } from '../../services/billing.js';
+import { CYCLES, formatINR, paymentTitle } from '../../services/billing.js';
 import { icon, shopStatePill } from '../components.js';
 import { adminIcon, demoTag, listHref, num, paidInfo, planName, plural, shopAvatar, toneClass } from './common.js';
 
@@ -154,7 +154,7 @@ function paymentsPanel(payments) {
         href: `/admin/shops/${p.shop_id}`,
         lead: html`<span class="adm-item-ic is-ok">${adminIcon('rupee')}</span>`,
         title: p.shop_name,
-        sub: `${planName(p.plan) || p.plan} · ${CYCLES[p.cycle] || p.cycle} · ${p.method === 'manual' ? 'Recorded by you' : 'Online'}`,
+        sub: `${paymentTitle(p)} · ${p.method === 'manual' ? 'Recorded by you' : 'Online'}`,
         side: html`<b class="adm-amount">${formatINR(p.amount_paise / 100)}</b><span class="adm-sub">${timeAgo(p.paid_at || p.created_at)}</span>`,
       })
     ),

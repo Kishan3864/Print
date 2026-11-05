@@ -1,6 +1,6 @@
 import { html, raw } from '../../lib/html.js';
 import { formatDate, formatTime } from '../../lib/util.js';
-import { getPlan } from '../../services/billing.js';
+import { getPlan, paymentTitle } from '../../services/billing.js';
 import { emptyState, icon } from '../components.js';
 import { adminIcon } from '../admin/common.js';
 import { METHOD_SHORT, cycleLabel, money, paise, PAYMENT_STATUS_LABEL, periodText } from '../shop-billing/common.js';
@@ -49,7 +49,7 @@ function rows(payments, showStatus) {
     return html`<tr data-row data-search="${search}" data-s-shop="${String(p.shop_name || '').toLowerCase()}" data-s-amount="${p.amount_paise}" data-s-plan="${plan ? plan.name.toLowerCase() : p.plan}" data-s-date="${when}" data-s-status="${p.status}">
       <td class="adm-pc-shop">${cell(html`<a class="adm-shop-name" href="/admin/shops/${p.shop_id}">${p.shop_name}</a>`, `/${p.shop_slug}`)}</td>
       <td class="num adm-pc-amount"><b class="adm-amount">${paise(p.amount_paise)}</b></td>
-      <td class="adm-pc-plan">${cell(plan ? plan.name : p.plan, cycleLabel(p.cycle))}</td>
+      <td class="adm-pc-plan">${cell(paymentTitle(p), p.product === 'plan' ? cycleLabel(p.cycle) : '')}</td>
       <td class="adm-pc-method">${cell(METHOD_SHORT[p.method] || p.method, p.provider_payment_id || p.note)}</td>
       <td class="adm-pc-period">${periodText(p)}</td>
       <td class="adm-pc-date">${cell(formatDate(when), formatTime(when))}</td>

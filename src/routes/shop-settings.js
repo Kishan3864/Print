@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { Router } from 'express';
-import { shopFeatures } from '../services/billing.js';
+import { can } from '../services/entitlements.js';
 import QRCode from 'qrcode';
 import { actionLimiter, loginLimiter, loginShop } from '../lib/security.js';
 import { logoUpload, discardUploads } from '../lib/uploads.js';
@@ -194,7 +194,7 @@ router.post('/settings', actionLimiter, demoLocked, logoUpload, (req, res, next)
   }
 
   // Logo and brand colour are part of the Pro and Business plans.
-  if (!shopFeatures(shop).branding && (file || fields.brand_color !== shop.brand_color)) {
+  if (!can(shop, 'branding') && (file || fields.brand_color !== shop.brand_color)) {
     discardUploads(req);
     delete fields.brand_color;
     updateShopSettings(shop.id, fields);

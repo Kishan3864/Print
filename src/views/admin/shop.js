@@ -2,9 +2,10 @@ import { html } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { addDays, formatBytes, formatDate, formatDateTime, formatTime, isHexColor, prettyPhone, timeAgo, waLink } from '../../lib/util.js';
 import { STATUSES } from '../../lib/status.js';
-import { CYCLES, formatINR, isSampleShop } from '../../services/billing.js';
+import { CYCLES, formatINR, isSampleShop, paymentTitle } from '../../services/billing.js';
 import { TICKET_STATUS_LABEL, categoryLabel } from '../../services/support.js';
 import { manualPaymentForm } from '../admin-billing/forms.js';
+import { auditCard, entitlementsCard } from './entitlements.js';
 import { notifyShopForm } from '../admin-support/forms.js';
 import { alert, csrfField, field, icon, shopStatePill, statusPill } from '../components.js';
 import {
@@ -146,7 +147,7 @@ function paymentsTable(payments) {
         ${payments.map(
           (p) => html`<tr>
             <td data-label="Date"><span class="nowrap">${formatDate(p.paid_at || p.created_at)}</span></td>
-            <td data-label="Plan"><span class="nowrap">${planName(p.plan) || p.plan}</span> <span class="adm-sub nowrap">${CYCLES[p.cycle] || p.cycle}</span></td>
+            <td data-label="For"><span>${paymentTitle(p)}</span></td>
             <td data-label="Period">${p.period_start ? html`<span class="nowrap">${formatDate(p.period_start)} – ${formatDate(p.period_end)}</span>` : html`<span class="adm-sub">—</span>`}</td>
             <td data-label="Method">${p.method === 'manual' ? 'Manual' : 'PayU'}${p.note ? html`<span class="adm-paynote">${p.note}</span>` : ''}</td>
             <td data-label="Status"><span class="pill adm-pay-${p.status}">${PAY_LABEL[p.status] || p.status}</span></td>
@@ -448,7 +449,7 @@ function noteCard(res, shop) {
   });
 }
 
-export function shopView(res, { shop, state, counts, storage, cap, liveFiles, recent, payments, tickets, today, reveal }) {
+export function shopView(res, { shop, state, counts, storage, cap, liveFiles, recent, payments, tickets, today, reveal, audit = [], consents = [] }) {
   // The shared sample shop is view only: no messages to it.
   const notifyForm = isSampleShop(shop) ? '' : notifyShopForm(res, shop);
   const hasNotify = filled(notifyForm);
@@ -460,11 +461,13 @@ export function shopView(res, { shop, state, counts, storage, cap, liveFiles, re
     <div class="adm-split">
       <div class="adm-col adm-main">
         ${actionsCard(res, shop, state, today)}
+        ${entitlementsCard(res, shop, { consents })}
         ${subscriptionCard(res, shop, payments)}
         ${supportCard(tickets)}
       </div>
       <aside class="adm-col adm-side" aria-label="More about this shop">
         ${noteCard(res, shop)}
+        ${auditCard(audit)}
         ${hasNotify ? notifyCard(notifyForm) : ''}
         ${usageCard({ counts, storage, cap, liveFiles, recent })}
         ${detailsCard(shop)}

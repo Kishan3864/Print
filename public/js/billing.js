@@ -31,7 +31,7 @@
     var amount = form.querySelector('[data-bl-amount]');
     if (!plan || !amount) return;
     function update() {
-      var cycle = form.querySelector('[data-bl-cycle]:checked');
+      var cycle = form.querySelector('[data-bl-cycle]:checked') || form.querySelector('[data-bl-cycle-select]');
       var p = prices[plan.value];
       if (p && cycle && p[cycle.value] != null) amount.placeholder = String(p[cycle.value]);
     }

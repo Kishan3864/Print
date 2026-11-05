@@ -3,7 +3,8 @@ import { html } from '../lib/html.js';
 import { config } from '../config.js';
 import { cleanLine, flash, isEmail, isMobile, slugError, slugify } from '../lib/util.js';
 import { actionLimiter, demoLimiter, loginLimiter, loginShop, logout, registerLimiter, safeNext } from '../lib/security.js';
-import { checkPassword, createShop, emailTaken, getShopByEmail, getShopBySlug, slugTaken, touchLogin } from '../services/shops.js';
+import { checkPassword, createShop, emailTaken, getShopByEmail, getShopById, getShopBySlug, slugTaken, touchLogin } from '../services/shops.js';
+import { recordShopConsent } from '../services/legal.js';
 import { emailAdminNewShop, orderFormUrl } from '../services/notify.js';
 import { notifyAdmin } from '../services/notifications.js';
 import { CYCLES, getPlan, isSampleShop } from '../services/billing.js';
@@ -11,6 +12,7 @@ import { messagePage, render } from '../views/layout.js';
 import { landingPage } from '../views/public/landing.js';
 import { demoPage } from '../views/public/demo.js';
 import { loginPage, registerPage } from '../views/public/auth.js';
+import { legalPage } from '../views/public/legal.js';
 
 const router = Router();
 
@@ -92,8 +94,9 @@ function readRegistration(body) {
   };
 }
 
-function validateRegistration(values, password, password2) {
+function validateRegistration(values, password, password2, agree = true) {
   const errors = {};
+  if (!agree) errors.agree = 'Please accept the Terms, Privacy Policy and Refund Policy to continue.';
   if (values.name.length < 2) errors.name = values.name ? 'Shop name is too short.' : 'Enter your shop name.';
   if (values.city.length < 2) errors.city = values.city ? 'City name is too short.' : 'Enter your city.';
   const slugErr = slugProblem(values.slug, values);
@@ -141,13 +144,16 @@ function registerShop(req, res, { demo, choice = null }) {
   const values = readRegistration(req.body);
   const password = String(req.body.password ?? '');
   const password2 = String(req.body.password2 ?? '');
-  const errors = validateRegistration(values, password, password2);
+  values.agree = req.body.agree === '1' ? '1' : '';
+  const errors = validateRegistration(values, password, password2, values.agree === '1');
   if (Object.keys(errors).length) {
     showRegister(req, res, { demo, choice, values, errors }, 400);
     return null;
   }
   try {
-    return createShop({ ...values, password, demo });
+    const shop = createShop({ ...values, password, demo });
+    recordShopConsent(shop, req);
+    return getShopById(shop.id);
   } catch (err) {
     // Lost a race with another sign-up for the same link or email.
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -161,6 +167,11 @@ function registerShop(req, res, { demo, choice = null }) {
 }
 
 const adminNote = (shop) => `${shop.city} · ${shop.owner_name} · ${shop.mobile} · ${shop.email}`;
+
+// ---------- Terms, Privacy, Refund policy (admin-editable) ----------
+router.get('/terms', (req, res) => render(res, legalPage('terms')));
+router.get('/privacy', (req, res) => render(res, legalPage('privacy')));
+router.get('/refund-policy', (req, res) => render(res, legalPage('refund')));
 
 router.get('/register', (req, res) => {
   if (req.shop && !req.shop.is_demo) return res.redirect('/shop');

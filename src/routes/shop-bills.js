@@ -24,6 +24,8 @@ import {
   billLines,
   billSettings,
   billStats,
+  billsOn,
+  deleteBill,
   billsForExport,
   computeTotals,
   createBill,
@@ -48,6 +50,7 @@ import {
 } from '../services/bills.js';
 import { sendBillPdf as sendPdf } from '../services/bill-pdf.js';
 import { render, messagePage } from '../views/layout.js';
+import { lockedView } from '../views/locked.js';
 import { billsListView } from '../views/shop-bills/list.js';
 import { billFormView } from '../views/shop-bills/form.js';
 import { billView } from '../views/shop-bills/bill.js';
@@ -88,6 +91,14 @@ function itemsByUse(shopId) {
   const use = itemUse(shopId);
   return listItems(shopId).sort((a, b) => (use[b.id] || 0) - (use[a.id] || 0) || a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
 }
+
+// Bills comes with the plan or the Bills add-on (entitlements.js). Without it: the "pay first" screen.
+// Exporting your own bills (CSV) always works, so data is never held back.
+router.use('/bills', (req, res, next) => {
+  if (billsOn(req.shop) || (req.method === 'GET' && req.path === '/export.csv')) return next();
+  if (req.method !== 'GET') return res.redirect(303, '/shop/bills');
+  render(res, lockedView(res, req.shop, 'bills'), 402);
+});
 
 // The bill "paper" uses the shop's colour (CSP: no inline styles, so a tiny per-shop stylesheet).
 router.get('/bills/doc.css', (req, res) => {
@@ -444,6 +455,12 @@ router.post(`/bills/${NO}/cancel`, loadBill, (req, res) => {
   setBillCancelled(req.bill, true);
   flash(req, 'success', `Bill B-${req.bill.bill_no} cancelled. It no longer counts in your totals.`);
   res.redirect(303, `/shop/bills/${req.bill.bill_no}`);
+});
+
+router.post(`/bills/${NO}/delete`, loadBill, (req, res) => {
+  deleteBill(req.bill);
+  flash(req, 'success', `Bill B-${req.bill.bill_no} deleted.`);
+  res.redirect(303, '/shop/bills');
 });
 
 router.post(`/bills/${NO}/restore`, loadBill, (req, res) => {

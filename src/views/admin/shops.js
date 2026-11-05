@@ -76,8 +76,10 @@ function planCell(s, today) {
   const info = paidInfo(s, today);
   const name = s.is_demo ? 'Demo' : s.plan ? planName(s.plan) : 'No plan';
   const cycle = !s.is_demo && s.plan && s.billing_cycle ? html` <span class="adm-cycle">${cycleName(s.billing_cycle)}</span>` : '';
+  const extras = s.is_demo ? [] : [...(s.billing_cycle === 'lifetime' ? ['Lifetime'] : []), ...String(s.addons_on || '').split(',').filter(Boolean).map((k) => '+ ' + (k === 'bills' ? 'Bills' : k))];
+  const bills = extras.map((t) => html` <span class="adm-cycle adm-bills-tag">${t}</span>`);
   return html`<div class="adm-lines adm-plan-cell">
-    <b>${name}${cycle}</b>
+    <b>${name}${cycle}${bills}</b>
     ${daysMeter(s, info)}
     <span class="adm-plan-when"><span class="${toneClass(info.tone)}">${info.text}</span>${s.paid_until ? html`<span class="adm-sub"> · ${formatDate(s.paid_until)}</span>` : ''}</span>
   </div>`;

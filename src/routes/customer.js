@@ -8,6 +8,7 @@ import { acceptsOrders, getShopBySlug, paperOptions, sizeOptions, storageUsed } 
 import { addCustomerVersion, createOrder, customerDecision, getOrderByToken, getOrderFile, latestProof, orderFiles } from '../services/orders.js';
 import { trackPath } from '../services/notify.js';
 import { billLines, getBillByToken } from '../services/bills.js';
+import { recordCustomerConsent } from '../services/legal.js';
 import { sendBillPdf } from '../services/bill-pdf.js';
 import { messagePage } from '../views/layout.js';
 import { closedPage, orderFormPage } from '../views/customer/order-form.js';
@@ -120,6 +121,8 @@ function readOrder(req, shop) {
     delivery: values.delivery,
     notes: values.notes,
   };
+  values.consent = b.consent === '1' ? '1' : '';
+  if (!values.consent && !missing('consent')) errors.consent = 'Please tick the box to agree, so the shop can use your files for this order.';
   return { values, data, errors };
 }
 
@@ -157,6 +160,7 @@ router.post(`${SHOP}/order`, orderLimiter, loadShop, requireOpen, checkQuota, or
   let order;
   try {
     order = createOrder(shop, data, req.files);
+    recordCustomerConsent(order, req);
   } catch (err) {
     discardUploads(req);
     return next(err);

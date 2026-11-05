@@ -192,7 +192,7 @@ function planCard(shop, state) {
   let tone = 'ok';
   let ic = 'check';
   let title = html`${plan || 'Your'} plan<span class="muted">${cycle}</span>`;
-  let line = shop.paid_until ? html`Active till <b>${formatDate(shop.paid_until)}</b>` : '';
+  let line = shop.billing_cycle === 'lifetime' ? html`<b>Lifetime</b> – never expires` : shop.paid_until ? html`Active till <b>${formatDate(shop.paid_until)}</b>` : '';
   let cta = html`<a class="btn btn-secondary btn-sm" href="/shop/billing">${shopIcon('card')}<span>Plan &amp; payments</span></a>`;
 
   if (sample) {

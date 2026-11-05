@@ -177,6 +177,42 @@
     });
   });
 
+  // ---------- sidebar drawer (phones / tablets) ----------
+  function setSide(open) {
+    document.body.classList.toggle('side-open', open);
+    var scrim = document.querySelector('.side-scrim');
+    if (scrim) scrim.hidden = !open;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-side-open]'), function (b) {
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    var side = document.querySelector('[data-side]');
+    if (open && side) {
+      var first = side.querySelector('.side-link.is-active') || side.querySelector('a, button');
+      if (first) setTimeout(function () { first.focus(); }, 60);
+    }
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target : null;
+    if (!t) return;
+    if (t.closest('[data-side-open]')) {
+      e.preventDefault();
+      setSide(!document.body.classList.contains('side-open'));
+    } else if (t.closest('[data-side-close]')) {
+      e.preventDefault();
+      setSide(false);
+      var opener = document.querySelector('.top-menu');
+      if (opener) opener.focus();
+    } else if (document.body.classList.contains('side-open') && t.closest('[data-side] a')) {
+      setSide(false);
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('side-open')) setSide(false);
+  });
+  window.addEventListener('pageshow', function () {
+    setSide(false);
+  });
+
   // ---------- PWA: service worker + install prompt ----------
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () {

@@ -257,6 +257,7 @@ export function orderFormPage(res, { shop, values = {}, errors = {}, owner = fal
               <button type="button" class="btn btn-ghost btn-sm" data-progress-cancel>Cancel</button>
             </div>
           </div>
+          <div class="cust-consent${errors.consent ? ' has-error' : ''}"><label class="au-check"><input type="checkbox" name="consent" value="1" data-consent${v.consent ? ' checked' : ''}><span>I agree that ${shop.name} and Brighton Print use my details and files to complete this order (<a href="/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="/terms" target="_blank" rel="noopener">Terms</a>).</span></label>${errors.consent ? html`<p class="field-error">${errors.consent}</p>` : ''}</div>
           <p class="cust-sum-line" data-sum-line aria-live="polite" hidden></p>
           <button type="submit" class="btn btn-brand btn-lg btn-block cust-send" data-submit data-loading="Uploading…">${icon('arrowRight')}<span data-submit-label>Send order</span></button>
         </div>

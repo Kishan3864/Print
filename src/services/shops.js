@@ -145,11 +145,12 @@ export function listShopsForAdmin({ q = '', status = '' } = {}) {
          (SELECT COUNT(*) FROM orders o WHERE o.shop_id = s.id) AS orders_count,
          (SELECT COUNT(*) FROM orders o WHERE o.shop_id = s.id AND o.created_at >= @today) AS orders_today,
          (SELECT MAX(created_at) FROM orders o WHERE o.shop_id = s.id) AS last_order_at,
-         (SELECT COALESCE(SUM(size_bytes), 0) FROM files f WHERE f.shop_id = s.id AND f.deleted_at IS NULL) AS storage_bytes
+         (SELECT COALESCE(SUM(size_bytes), 0) FROM files f WHERE f.shop_id = s.id AND f.deleted_at IS NULL) AS storage_bytes,
+         (SELECT GROUP_CONCAT(a.addon) FROM shop_addons a WHERE a.shop_id = s.id AND a.status = 'active' AND (a.ends_on IS NULL OR a.ends_on >= @todayYmd)) AS addons_on
        FROM shops s
        ORDER BY CASE s.status WHEN 'pending' THEN 0 ELSE 1 END, s.created_at DESC`
     )
-    .all({ today: startOfTodayIso() });
+    .all({ today: startOfTodayIso(), todayYmd: ymd() });
   const needle = String(q || '').trim().toLowerCase();
   const nd = needle.replace(/\D/g, '');
   return rows

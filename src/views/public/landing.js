@@ -1,4 +1,5 @@
 import { html } from '../../lib/html.js';
+import { planFeatureList } from '../../services/entitlements.js';
 import { config } from '../../config.js';
 import { icon } from '../components.js';
 import { activePlans, formatINR } from '../../services/billing.js';
@@ -127,7 +128,7 @@ function audience() {
 }
 
 // ---------- pricing ----------
-const PLAN_FEATURES = ['Unlimited orders', 'Order link + QR code', 'Customer OK on designs', 'WhatsApp ready messages', 'Help & support'];
+const PLAN_FEATURES = ['Unlimited orders, order link + QR code', 'Customer OK on designs, WhatsApp messages'];
 
 /** Yearly saving against 12 monthly payments: { rupees, pct } (0 when there is none). */
 function yearlySaving(plan) {
@@ -154,11 +155,17 @@ function planCard(plan) {
       <p class="lp-price-main"><b>${formatINR(plan.yearly)}</b><span>/ year</span></p>
       <p class="lp-price-sub">${save.rupees ? html`About ${formatINR(Math.round(plan.yearly / 12))}/month · <span class="lp-save">you save ${formatINR(save.rupees)}</span>` : 'Billed once a year'}</p>
     </div>
+    ${plan.lifetime
+      ? html`<div class="lp-price lp-only-lifetime">
+          <p class="lp-price-main"><b>${formatINR(plan.lifetime)}</b><span>once</span></p>
+          <p class="lp-price-sub">Pay once, use for life · 1 year updates included</p>
+        </div>`
+      : html`<div class="lp-price lp-only-lifetime"><p class="lp-price-main"><b>—</b></p><p class="lp-price-sub">Monthly or yearly only</p></div>`}
     <ul class="lp-plan-list">
-      <li class="lp-plan-storage">${icon('check')}<span><b>${plan.storageGb} GB</b> file storage</span></li>
       ${PLAN_FEATURES.map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}
+      ${planFeatureList(plan.key).map((f) => html`<li>${icon('check')}<span>${f}</span></li>`)}
     </ul>
-    ${cta('monthly')}${cta('yearly')}
+    ${cta('monthly')}${cta('yearly')}${plan.lifetime ? cta('lifetime') : ''}
   </li>`;
 }
 
@@ -169,15 +176,17 @@ function pricing() {
     <div class="container">
       <div class="lp-head">
         <h2 id="pricing-title">Simple pricing</h2>
-        <p>Pay monthly or yearly. Every plan has every feature – plans differ only in file storage.</p>
+        <p>Pay monthly, yearly (2 months free) or once for life. Bigger plans add your branding, reprints, Bills and priority help.</p>
       </div>
       ${plans.length
         ? html`<div class="lp-pricing">
             <input class="lp-cycle-input" type="radio" name="lp-cycle" id="lp-cycle-monthly" value="monthly" checked>
             <input class="lp-cycle-input" type="radio" name="lp-cycle" id="lp-cycle-yearly" value="yearly">
+            <input class="lp-cycle-input" type="radio" name="lp-cycle" id="lp-cycle-lifetime" value="lifetime">
             <div class="lp-cycle">
               <label for="lp-cycle-monthly" class="lp-cycle-m">Monthly</label>
               <label for="lp-cycle-yearly" class="lp-cycle-y">Yearly${bestPct ? html` <span class="lp-cycle-save">save ${bestPct}%</span>` : ''}</label>
+              ${plans.some((p) => p.lifetime) ? html`<label for="lp-cycle-lifetime" class="lp-cycle-l">Lifetime</label>` : ''}
             </div>
             <ul class="lp-plans">${plans.map(planCard)}</ul>
           </div>`
@@ -188,7 +197,7 @@ function pricing() {
           <p><b>Try free first:</b> create a demo shop – no payment, ready in a minute.</p>
           <a class="btn btn-secondary" href="/demo"><span>Create a demo shop</span>${icon('arrowRight')}</a>
         </div>
-        <p class="lp-pay-note">${icon('shield')}<span>Prices in rupees. Pay securely by UPI, card or net banking through Razorpay. Renew anytime.</span></p>
+        <p class="lp-pay-note">${icon('shield')}<span>Prices in rupees. Pay securely by UPI, card or net banking through PayU. Renew anytime.</span></p>
       </div>
     </div>
   </section>`;

@@ -283,6 +283,108 @@ const MIGRATIONS = [
      amount_paise INTEGER NOT NULL
    );
    CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines(bill_id);`,
+
+  // 7: entitlements – lifetime plans, add-ons (Bills …), care (updates & support for lifetime),
+  //    paid services, per-shop admin overrides, audit log, Terms/Privacy consent records
+  `CREATE TABLE payments_v3 (
+     id                  INTEGER PRIMARY KEY,
+     shop_id             INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     product             TEXT NOT NULL DEFAULT 'plan' CHECK (product IN ('plan','addon','care','service')),
+     item                TEXT NOT NULL DEFAULT '',
+     plan                TEXT NOT NULL DEFAULT '',
+     cycle               TEXT NOT NULL CHECK (cycle IN ('monthly','yearly','lifetime','once')),
+     amount_paise        INTEGER NOT NULL,
+     currency            TEXT NOT NULL DEFAULT 'INR',
+     method              TEXT NOT NULL CHECK (method IN ('payu','razorpay','manual')),
+     status              TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created','paid','failed','cancelled')),
+     reference           TEXT NOT NULL UNIQUE,
+     provider_link_id    TEXT,
+     provider_link_url   TEXT,
+     provider_payment_id TEXT,
+     note                TEXT NOT NULL DEFAULT '',
+     title               TEXT NOT NULL DEFAULT '',
+     ref_id              INTEGER,
+     period_start        TEXT,
+     period_end          TEXT,
+     created_at          TEXT NOT NULL,
+     paid_at             TEXT,
+     kind                TEXT NOT NULL DEFAULT 'new',
+     credit_paise        INTEGER NOT NULL DEFAULT 0,
+     superseded_at       TEXT,
+     verified_at         TEXT,
+     gateway_status      TEXT NOT NULL DEFAULT ''
+   );
+   INSERT INTO payments_v3 (id, shop_id, product, item, plan, cycle, amount_paise, currency, method, status, reference, provider_link_id,
+       provider_link_url, provider_payment_id, note, period_start, period_end, created_at, paid_at, kind, credit_paise, superseded_at)
+     SELECT id, shop_id, 'plan', plan, plan, cycle, amount_paise, currency, method, status, reference, provider_link_id,
+       provider_link_url, provider_payment_id, note, period_start, period_end, created_at, paid_at, kind, credit_paise, superseded_at FROM payments;
+   DROP TABLE payments;
+   ALTER TABLE payments_v3 RENAME TO payments;
+   CREATE INDEX IF NOT EXISTS idx_payments_shop ON payments(shop_id, created_at);
+   CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status, paid_at);
+
+   ALTER TABLE shops ADD COLUMN care_until TEXT;
+   ALTER TABLE shops ADD COLUMN overrides TEXT NOT NULL DEFAULT '{}';
+   ALTER TABLE shops ADD COLUMN terms_version TEXT;
+   ALTER TABLE shops ADD COLUMN terms_accepted_at TEXT;
+   ALTER TABLE orders ADD COLUMN consent_version TEXT;
+
+   CREATE TABLE IF NOT EXISTS shop_addons (
+     id          INTEGER PRIMARY KEY,
+     shop_id     INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     addon       TEXT NOT NULL,
+     cycle       TEXT NOT NULL CHECK (cycle IN ('monthly','yearly','lifetime','free')),
+     starts_on   TEXT NOT NULL,
+     ends_on     TEXT,
+     status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','revoked')),
+     source      TEXT NOT NULL DEFAULT 'payment',
+     payment_id  INTEGER,
+     note        TEXT NOT NULL DEFAULT '',
+     created_at  TEXT NOT NULL,
+     updated_at  TEXT NOT NULL,
+     UNIQUE (shop_id, addon)
+   );
+
+   CREATE TABLE IF NOT EXISTS audit_log (
+     id       INTEGER PRIMARY KEY,
+     at       TEXT NOT NULL,
+     actor    TEXT NOT NULL,
+     shop_id  INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+     action   TEXT NOT NULL,
+     detail   TEXT NOT NULL DEFAULT '',
+     ip       TEXT NOT NULL DEFAULT ''
+   );
+   CREATE INDEX IF NOT EXISTS idx_audit_shop ON audit_log(shop_id, id);
+
+   CREATE TABLE IF NOT EXISTS consents (
+     id          INTEGER PRIMARY KEY,
+     at          TEXT NOT NULL,
+     subject     TEXT NOT NULL CHECK (subject IN ('shop','customer')),
+     shop_id     INTEGER REFERENCES shops(id) ON DELETE CASCADE,
+     order_id    INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+     version     TEXT NOT NULL,
+     ip          TEXT NOT NULL DEFAULT '',
+     user_agent  TEXT NOT NULL DEFAULT ''
+   );
+   CREATE INDEX IF NOT EXISTS idx_consents_shop ON consents(shop_id, id);
+
+   CREATE TABLE IF NOT EXISTS service_requests (
+     id           INTEGER PRIMARY KEY,
+     shop_id      INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     service      TEXT NOT NULL,
+     title        TEXT NOT NULL,
+     details      TEXT NOT NULL DEFAULT '',
+     status       TEXT NOT NULL DEFAULT 'awaiting_payment'
+                  CHECK (status IN ('awaiting_payment','open','quoted','in_progress','done','declined','cancelled')),
+     fee_paise    INTEGER NOT NULL DEFAULT 0,
+     quote_paise  INTEGER,
+     quote_note   TEXT NOT NULL DEFAULT '',
+     admin_note   TEXT NOT NULL DEFAULT '',
+     ticket_id    INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
+     created_at   TEXT NOT NULL,
+     updated_at   TEXT NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_service_requests ON service_requests(status, updated_at);`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

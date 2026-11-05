@@ -2,15 +2,18 @@ import { html, raw } from '../../lib/html.js';
 import { config } from '../../config.js';
 import { formatDate } from '../../lib/util.js';
 import { shopState } from '../../services/shops.js';
-import { daysLeft } from '../../services/billing.js';
+import { daysLeft, getPlan } from '../../services/billing.js';
+import { can, isLifetime } from '../../services/entitlements.js';
 import { orderFormUrl } from '../../services/notify.js';
-import { icon } from '../components.js';
+import { csrfField, icon } from '../components.js';
 import { announcementBanner } from '../announce.js';
 
-// Shop owner app chrome: top bar (desktop nav), bottom tab bar (mobile), plan banner.
-// Nav keys for render({active}): orders | bills | link | notifications | support | settings (billing counts as settings).
-// Badges come from res.locals: ordersTodo (orders waiting on the shop), shopUnread (alerts),
-// ticketsUnread (support replies). live.js re-renders <header> and .tabbar, shop.js refreshes them by poll.
+// Shop owner app chrome:
+//   desktop (≥1100px)  a fixed dark sidebar – shop, plan status, every section with badges
+//   phones / tablets   a slim top bar (menu button opens the same sidebar as a drawer) + bottom tab bar
+// Nav keys for render({active}): orders | bills | link | billing | services | notifications | support | settings.
+// Badges come from res.locals: ordersTodo, shopUnread (alerts), ticketsUnread (support replies).
+// live.js re-renders the sidebar, the top bar and the tab bar; shop.js refreshes the counts by poll.
 
 // Extra icons for the shop area (same markup as components.js icon()).
 const EXTRA = {
@@ -30,6 +33,10 @@ const EXTRA = {
   trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  crown: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/><path d="M5 19h14"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.6-.4-.4-2.6z"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
 };
 
 /** icon() plus a few shop-only glyphs. */
@@ -40,23 +47,42 @@ export function shopIcon(name, cls = '') {
   );
 }
 
-export const SHOP_NAV = [
-  { key: 'orders', href: '/shop', label: 'Orders', icon: 'orders' },
-  { key: 'bills', href: '/shop/bills', label: 'Bills', icon: 'receipt' },
-  { key: 'link', href: '/shop/link', label: 'Share link', short: 'Share', icon: 'share' },
-  { key: 'notifications', href: '/shop/notifications', label: 'Alerts', icon: 'bell' },
-  { key: 'support', href: '/shop/support', label: 'Help', icon: 'support' },
-  { key: 'settings', href: '/shop/settings', label: 'Account', icon: 'user' },
+const SECTIONS = [
+  {
+    label: 'Work',
+    items: [
+      { key: 'orders', href: '/shop', label: 'Orders', icon: 'orders' },
+      { key: 'bills', href: '/shop/bills', label: 'Bills', icon: 'receipt', feature: 'bills' },
+      { key: 'link', href: '/shop/link', label: 'Share link', icon: 'share' },
+    ],
+  },
+  {
+    label: 'Plan & extras',
+    items: [
+      { key: 'billing', href: '/shop/billing', label: 'Plan & billing', icon: 'crown' },
+      { key: 'services', href: '/shop/services', label: 'Services', icon: 'tool' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { key: 'notifications', href: '/shop/notifications', label: 'Alerts', icon: 'bell' },
+      { key: 'support', href: '/shop/support', label: 'Help', icon: 'support' },
+      { key: 'settings', href: '/shop/settings', label: 'Account', icon: 'user' },
+    ],
+  },
 ];
+/** Flat list (kept for callers that want every section). */
+export const SHOP_NAV = SECTIONS.flatMap((s) => s.items);
 
-// Plan & billing lives inside Account.
-const navKey = (active) => (active === 'billing' ? 'settings' : active);
-const current = (active, key) => (navKey(active) === key ? raw(' aria-current="page"') : '');
+const visible = (res, n) => !n.feature || can(res.locals.shop, n.feature);
+const current = (active, key) => (active === key ? raw(' aria-current="page"') : '');
 
 /** True when the plan needs the owner (not paid yet, ended, ending within 7 days, or a personal demo). */
 export function planNeedsAttention(shop) {
   if (!shop || (shop.is_demo && shop.slug === config.demo.slug)) return false;
   if (shop.is_demo) return true;
+  if (isLifetime(shop)) return false;
   const state = shopState(shop);
   if (state === 'pending' || state === 'expired') return true;
   const left = daysLeft(shop);
@@ -75,11 +101,10 @@ function badgeFor(res, key) {
   if (key === 'orders') return countBadge('todo', l.ordersTodo || 0, 'waiting for you');
   if (key === 'notifications') return countBadge('alerts', l.shopUnread || 0, 'new');
   if (key === 'support') return countBadge('support', l.ticketsUnread || 0, 'new reply');
-  if (key === 'settings' && planNeedsAttention(l.shop)) return html`<span class="badge-dot" title="Plan needs attention"></span>`;
+  if (key === 'billing' && planNeedsAttention(l.shop)) return html`<span class="badge-dot" title="Plan needs attention"></span>`;
   return '';
 }
 
-/** Screen-reader text for a nav item's badge. */
 function srCount(res, key) {
   const l = res.locals;
   const n = key === 'orders' ? l.ordersTodo : key === 'notifications' ? l.shopUnread : key === 'support' ? l.ticketsUnread : 0;
@@ -93,34 +118,89 @@ export function shopAvatar(shop, cls = 'sh-avatar') {
   return html`<span class="${cls}" aria-hidden="true">${initial}</span>`;
 }
 
+/** Plan status chip in the sidebar: what plan, how long, and a nudge when it needs the owner. */
+function planChip(shop) {
+  if (!shop) return '';
+  const sample = shop.is_demo && shop.slug === config.demo.slug;
+  const state = shopState(shop);
+  const plan = getPlan(shop.plan);
+  let tone = 'ok';
+  let main;
+  let sub;
+  if (sample) [main, sub, tone] = ['Sample shop', 'Resets every few hours', 'info'];
+  else if (shop.is_demo) {
+    const left = daysLeft(shop);
+    [main, sub, tone] = ['Free demo', state === 'expired' ? 'Ended – go live' : `${Math.max(0, (left ?? 0) + 1)} days left · Go live`, state === 'expired' ? 'danger' : 'info'];
+  } else if (state === 'pending') [main, sub, tone] = ['No plan yet', 'Choose a plan to start', 'warn'];
+  else if (state === 'expired') [main, sub, tone] = [`${plan?.name || 'Plan'} ended`, 'Renew to switch back on', 'danger'];
+  else if (state === 'paused') [main, sub, tone] = ['Account paused', 'Contact us', 'danger'];
+  else if (isLifetime(shop)) [main, sub] = [`${plan?.name || 'Plan'} · Lifetime`, shop.care_until && shop.care_until >= new Date().toISOString().slice(0, 10) ? `Updates till ${formatDate(shop.care_until)}` : 'Updates & Support ended'];
+  else {
+    const left = daysLeft(shop);
+    [main, sub, tone] = [`${plan?.name || 'Plan'} · ${shop.billing_cycle === 'yearly' ? 'Yearly' : 'Monthly'}`, left <= 0 ? 'Ends today – renew' : `${left} day${left === 1 ? '' : 's'} left`, left <= 7 ? 'warn' : 'ok'];
+  }
+  return html`<a class="side-plan is-${tone}" href="/shop/billing">${shopIcon('crown')}<span><b>${main}</b><small>${sub}</small></span>${shopIcon('chevronRight', 'side-plan-go')}</a>`;
+}
+
+function navLink(res, n, active) {
+  return html`<a href="${n.href}" class="side-link${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span class="side-link-text">${n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`;
+}
+
+/** The sidebar (desktop) / drawer (phones). */
+export function shopSidebar(res, active) {
+  const shop = res.locals.shop;
+  return html`<aside class="app-side sh-side" id="app-side" aria-label="Shop menu" data-side>
+    <div class="side-head">
+      <a class="side-brand" href="/shop" aria-label="${shop?.name || 'Brighton Print'} – orders">
+        ${shopAvatar(shop, 'sh-avatar side-avatar')}
+        <span class="side-brand-text"><b>${shop?.name || 'Brighton Print'}</b><small>Brighton Print</small></span>
+      </a>
+      <button type="button" class="side-close" data-side-close aria-label="Close menu">${icon('x')}</button>
+    </div>
+    ${planChip(shop)}
+    <nav class="side-nav" aria-label="Shop">
+      ${SECTIONS.map((s) => {
+        const items = s.items.filter((n) => visible(res, n));
+        return items.length ? html`<p class="side-label">${s.label}</p>${items.map((n) => navLink(res, n, active))}` : '';
+      })}
+    </nav>
+    <div class="side-foot">
+      ${shop ? html`<a class="btn btn-soft btn-sm btn-block side-mypage" href="${orderFormUrl(shop)}" target="_blank" rel="noopener">${icon('eye')}<span>My order page</span></a>` : ''}
+      <button type="button" class="btn btn-ghost btn-sm btn-block side-install" data-install hidden>${icon('install')}<span>Install app</span></button>
+      <form method="post" action="/logout" class="side-logout">${csrfField(res)}<button type="submit" class="side-link">${icon('logout')}<span class="side-link-text">Log out</span></button></form>
+    </div>
+  </aside>`;
+}
+
+/** Slim top bar for phones and tablets (menu button + shop + my page). Hidden next to the desktop sidebar. */
 export function shopHeader(res, active) {
   const shop = res.locals.shop;
-  return html`<header class="app-header sh-header">
-    <div class="container header-row">
-      <a class="sh-brand" href="/shop" aria-label="${shop?.name || 'Brighton Print'} – orders">
-        ${shopAvatar(shop)}
-        <span class="sh-brand-text"><b>${shop?.name || 'Brighton Print'}</b><small>Brighton Print</small></span>
-      </a>
-      <nav class="app-nav sh-nav" aria-label="Shop">
-        ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="nav-item${navKey(active) === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`)}
-      </nav>
-      <div class="header-actions">
-        <button type="button" class="btn btn-ghost btn-sm" data-install hidden aria-label="Install app" title="Install app">${icon('install')}<span class="hide-xs">Install app</span></button>
-        ${shop
-          ? html`<a class="btn btn-soft btn-sm sh-mypage" href="${orderFormUrl(shop)}" target="_blank" rel="noopener" title="Open the page your customers order from" aria-label="My order page">${icon('eye')}<span class="hide-xs">My order page</span></a>`
-          : ''}
-      </div>
+  const total = (res.locals.shopUnread || 0) + (res.locals.ticketsUnread || 0);
+  return html`<header class="app-header app-top sh-top">
+    <div class="app-top-row">
+      <button type="button" class="top-menu" data-side-open aria-controls="app-side" aria-expanded="false" aria-label="Open menu">${icon('menu')}${total ? html`<span class="badge-dot" aria-hidden="true"></span>` : ''}</button>
+      <a class="top-brand" href="/shop">${shopAvatar(shop, 'sh-avatar top-avatar')}<span class="top-brand-text">${shop?.name || 'Brighton Print'}</span></a>
+      ${shop ? html`<a class="btn btn-soft btn-sm btn-icon top-mypage" href="${orderFormUrl(shop)}" target="_blank" rel="noopener" aria-label="My order page" title="Open the page your customers order from">${icon('eye')}</a>` : ''}
     </div>
   </header>`;
 }
 
+/** Bottom tab bar (phones): the daily sections + "Menu" (the drawer). */
 export function shopTabbar(res, active) {
+  const tabs = [
+    { key: 'orders', href: '/shop', label: 'Orders', icon: 'orders' },
+    can(res.locals.shop, 'bills') ? { key: 'bills', href: '/shop/bills', label: 'Bills', icon: 'receipt' } : { key: 'link', href: '/shop/link', label: 'Share', icon: 'share' },
+    { key: 'notifications', href: '/shop/notifications', label: 'Alerts', icon: 'bell' },
+    { key: 'support', href: '/shop/support', label: 'Help', icon: 'support' },
+  ];
+  const inMenu = !tabs.some((t) => t.key === active);
   return html`<nav class="tabbar sh-tabbar" aria-label="Shop sections">
-    ${SHOP_NAV.map((n) => html`<a href="${n.href}" class="tab${navKey(active) === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.short || n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`)}
+    ${tabs.map((n) => html`<a href="${n.href}" class="tab${active === n.key ? ' is-active' : ''}"${current(active, n.key)}>${shopIcon(n.icon)}<span>${n.label}</span>${srCount(res, n.key)}${badgeFor(res, n.key)}</a>`)}
+    <button type="button" class="tab${inMenu ? ' is-active' : ''}" data-side-open aria-controls="app-side" aria-expanded="false">${icon('menu')}<span>Menu</span>${planNeedsAttention(res.locals.shop) ? html`<span class="badge-dot" title="Plan needs attention"></span>` : ''}</button>
   </nav>`;
 }
 
-/** Banners under the header: plan / demo status, then an unread important announcement from us. */
+/** Banners under the top: plan / demo status, then an unread important announcement from us. */
 export function shopStateBanner(res) {
   return html`${planBanner(res)}${announcementBanner(res)}`;
 }
@@ -147,8 +227,8 @@ function planBanner(res) {
     return banner('info', html`<b>Free demo · ${remaining}.</b> Everything works – orders here are for testing.`, 'Go live', '/shop/billing');
   }
   if (state === 'pending') return banner('info', html`<b>One step left:</b> choose a plan and your order link opens right away.`);
-  if (state === 'expired') return banner('danger', html`<b>Your plan ended on ${formatDate(shop.paid_until)}.</b> Customers can't order until you renew.`, 'Renew now');
+  if (state === 'expired') return banner('danger', html`<b>Your plan ended on ${formatDate(shop.paid_until)}.</b> Customers can't order and paid features are paused until you renew.`, 'Renew now');
   if (state === 'paused') return banner('danger', html`<b>Your account is paused.</b> Customers can't order right now.`, 'Contact us', '/shop/support');
-  if (left != null && left <= 7) return banner('warn', html`<b>Plan ends ${left === 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`}</b> (${formatDate(shop.paid_until)}). Renew to avoid a break.`, 'Renew');
+  if (!isLifetime(shop) && left != null && left <= 7) return banner('warn', html`<b>Plan ends ${left === 0 ? 'today' : `in ${left} day${left === 1 ? '' : 's'}`}</b> (${formatDate(shop.paid_until)}). Renew to avoid a break.`, 'Renew');
   return '';
 }

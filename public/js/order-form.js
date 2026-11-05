@@ -495,6 +495,13 @@
       reveal(zone);
       return;
     }
+    var consent = form.querySelector('[data-consent]');
+    if (consent && !consent.checked) {
+      e.preventDefault();
+      showFormError('Please tick the box to agree, so the shop can use your files for this order.');
+      consent.focus();
+      return;
+    }
     retried = false;
     if (startUpload()) {
       e.preventDefault();

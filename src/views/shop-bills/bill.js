@@ -29,8 +29,9 @@ export function billDocument({ shop, bill, lines, settings, qrSvg }) {
         <div class="bi-doc-shop-text">
           <b class="bi-doc-shop-name">${shop.name}</b>
           ${address ? html`<span class="bi-doc-addr">${address}</span>` : ''}
-          ${phone ? html`<span>Phone: ${prettyPhone(phone)}</span>` : ''}
-          ${settings.gstin ? html`<span>GSTIN: ${settings.gstin}</span>` : ''}
+          ${phone || settings.gstin
+            ? html`<span>${[phone ? `Phone ${prettyPhone(phone)}` : '', settings.gstin ? `GSTIN ${settings.gstin}` : ''].filter(Boolean).map((t) => t.replace(/ /g, ' ')).join('  ·  ')}</span>`
+            : ''}
         </div>
       </div>
       <div class="bi-doc-title">
@@ -43,28 +44,32 @@ export function billDocument({ shop, bill, lines, settings, qrSvg }) {
       </div>
     </header>
 
-    <div class="bi-doc-parties">
+    <div class="bi-doc-strip">
       <section>
-        <h3>Bill to</h3>
+        <h3>Billed to</h3>
         <p class="bi-doc-cust">${bill.customer_name || 'Cash customer'}</p>
-        ${bill.customer_mobile ? html`<p>Mobile: ${prettyPhone(bill.customer_mobile)}</p>` : ''}
+        ${bill.customer_mobile ? html`<p>Mobile ${prettyPhone(bill.customer_mobile)}</p>` : ''}
         ${bill.customer_address ? html`<p class="bi-doc-addr">${bill.customer_address}</p>` : ''}
-        ${bill.customer_gstin ? html`<p>GSTIN: ${bill.customer_gstin}</p>` : ''}
+        ${bill.customer_gstin ? html`<p>GSTIN ${bill.customer_gstin}</p>` : ''}
       </section>
       <section>
-        <h3>Status</h3>
-        <p class="bi-doc-state is-${state}">${STATE_TEXT[state]}</p>
-        <p>Payment: ${PAY_MODES[bill.pay_mode] || bill.pay_mode}</p>
-        ${state === 'part' || state === 'due' ? html`<p>Balance due: ${rs(due, { fixed: true })}</p>` : ''}
+        <h3>Payment</h3>
+        <p class="bi-doc-state is-${state}"><span class="bi-dot" aria-hidden="true"></span>${STATE_TEXT[state]}</p>
+        <p>${state === 'due' || state === 'cancelled' ? 'Mode' : 'By'} ${PAY_MODES[bill.pay_mode] || bill.pay_mode}</p>
+      </section>
+      <section class="bi-doc-amt">
+        <h3>${state === 'cancelled' ? 'Bill amount' : due > 0 ? 'Amount due' : 'Total paid'}</h3>
+        <p class="bi-doc-big">${rs(due > 0 ? due : bill.total_paise, { fixed: true })}</p>
+        ${due > 0 && bill.paid_paise > 0 ? html`<p>of ${rs(bill.total_paise, { fixed: true })}</p>` : ''}
       </section>
     </div>
 
     <table class="bi-doc-lines">
-      <thead><tr><th scope="col" class="bi-dl-n">#</th><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Rate (₹)</th><th scope="col" class="num">Amount (₹)</th></tr></thead>
+      <thead><tr><th scope="col" class="bi-dl-n">#</th><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Rate</th><th scope="col" class="num">Amount</th></tr></thead>
       <tbody>
         ${lines.map(
           (l, i) => html`<tr>
-            <td class="bi-dl-n">${i + 1}</td>
+            <td class="bi-dl-n">${String(i + 1).padStart(2, '0')}</td>
             <td class="bi-dl-name">${l.name}</td>
             <td class="num bi-dl-qty">${qtyText(l.qty)}<span class="bi-dl-x"> × </span></td>
             <td class="num bi-dl-rate">${amountText(l.rate_paise)}${l.unit ? html`<span class="bi-dl-unit">per ${l.unit}</span>` : ''}</td>
@@ -77,7 +82,7 @@ export function billDocument({ shop, bill, lines, settings, qrSvg }) {
     <div class="bi-doc-foot">
       <div class="bi-doc-words">
         <h3>Amount in words</h3>
-        <p><b>${amountInWords(bill.total_paise)}</b></p>
+        <p class="bi-doc-inwords">${amountInWords(bill.total_paise)}</p>
         ${bill.notes ? html`<h3>Note</h3><p class="bi-doc-note">${bill.notes}</p>` : ''}
       </div>
       <dl class="bi-doc-sum">
@@ -99,7 +104,7 @@ export function billDocument({ shop, bill, lines, settings, qrSvg }) {
       ${qrSvg
         ? html`<div class="bi-doc-qr">
             <span class="bi-doc-qr-img" aria-hidden="true">${raw(qrSvg)}</span>
-            <span><b>Scan to pay</b><span>${rs(due, { fixed: true })} by UPI</span><small>${settings.upi}</small></span>
+            <span><h3>Scan to pay</h3><b>${rs(due, { fixed: true })}</b><small>UPI · ${settings.upi}</small></span>
           </div>`
         : html`<span></span>`}
       <div class="bi-doc-signature">
@@ -170,8 +175,13 @@ export function billView(d) {
       <a class="btn btn-secondary btn-sm" href="/shop/bills/new?copy=${bill.bill_no}" title="New bill with the same customer and items">${icon('copy')}<span>Duplicate</span></a>
       ${cancelled
         ? html`<form method="post" action="${path}/restore" class="inline-form">${csrfField(res)}<button class="btn btn-secondary btn-sm" type="submit">${icon('refresh')}<span>Restore bill</span></button></form>`
-        : html`<form method="post" action="${path}/cancel" class="inline-form">${csrfField(res)}<button class="btn btn-danger btn-sm" type="submit" data-confirm="Cancel bill ${billNo(bill)}? It stays in your list marked Cancelled (bill numbers are never reused). You can restore it later.">${icon('x')}<span>Cancel bill</span></button></form>`}
+        : html`<form method="post" action="${path}/cancel" class="inline-form">${csrfField(res)}<button class="btn btn-secondary btn-sm" type="submit" data-confirm="Cancel bill ${billNo(bill)}? It stays in your list marked Cancelled and is not counted in totals. You can restore it later.">${icon('x')}<span>Cancel bill</span></button></form>`}
     </div>
+    <form method="post" action="${path}/delete" class="bi-delete">
+      ${csrfField(res)}
+      <button class="btn btn-danger btn-sm btn-block" type="submit" data-confirm="Delete bill ${billNo(bill)} for ever? It is removed from your records and the customer's bill link stops working. This cannot be undone.">${shopIcon('trash')}<span>Delete bill</span></button>
+      <p class="hint">Removes it completely. To keep a record, use Cancel instead.</p>
+    </form>
   </section>`;
 
   return html`<div class="container bi-page bi-view">

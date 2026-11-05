@@ -20,7 +20,7 @@ function chosenPlan(choice) {
   const { plan, cycle } = choice;
   return html`<div class="au-plan">
     <span class="au-plan-ic">${icon('check')}</span>
-    <p><b>${plan.name}</b> · ${CYCLES[cycle]} · ${formatINR(priceRupees(plan, cycle))}${cycle === 'yearly' ? ' / year' : ' / month'}<small>You can change the plan on the next step.</small></p>
+    <p><b>${plan.name}</b> · ${CYCLES[cycle]} · ${formatINR(priceRupees(plan, cycle))}${cycle === 'yearly' ? ' / year' : cycle === 'lifetime' ? ' once, for life' : ' / month'}<small>You can change the plan on the next step.</small></p>
     <a class="au-plan-change" href="/#pricing">Change</a>
   </div>`;
 }
@@ -117,6 +117,11 @@ export function registerPage(res, { values = {}, errors = {}, demo = false, choi
             })}
           </div>
         </fieldset>
+
+        <div class="au-consent${e('agree') ? ' has-error' : ''}">
+          <label class="au-check"><input type="checkbox" name="agree" value="1" required${v('agree') ? html` checked` : ''}><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a>, <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/refund-policy" target="_blank" rel="noopener">Refund Policy</a>.</span></label>
+          ${e('agree') ? html`<p class="field-error">${e('agree')}</p>` : ''}
+        </div>
 
         ${demo
           ? html`<div class="au-approval">${alert('info', `Your demo shop runs for ${days} days. Orders placed on a demo link are for testing. Go live anytime by choosing a plan.`, 'clock')}</div>

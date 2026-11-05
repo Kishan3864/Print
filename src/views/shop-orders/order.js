@@ -331,7 +331,9 @@ export function orderView(d) {
           : html`<time datetime="${order.created_at}">${formatDateTime(order.created_at)}</time>`}</span></p>
       </div>
       <div class="sh-ohead-quick">
-        ${d.bill
+        ${!d.billsOn
+          ? ''
+          : d.bill
           ? html`<a class="btn btn-secondary" href="/shop/bills/${d.bill.bill_no}" title="Open the bill for this order">${shopIcon('receipt')}<span>Bill B-${d.bill.bill_no}</span></a>`
           : s !== 'cancelled'
             ? html`<a class="btn btn-secondary" href="/shop/bills/new?order=${no}" title="Make a bill for this order">${shopIcon('receipt')}<span>Make bill</span></a>`

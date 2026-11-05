@@ -36,6 +36,9 @@ export function siteFooter() {
         <a href="/#pricing">Pricing</a>
         <a href="/register">Get started</a>
         <a href="/login">Shop login</a>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/refund-policy">Refunds</a>
       </nav>
     </div>
   </footer>`;
