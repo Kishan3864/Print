@@ -24,6 +24,7 @@ function bypass(url) {
     p.startsWith('/api/') ||
     p === '/live' ||
     p.includes('/files/') ||
+    /(\.pdf|\/pdf|\.csv)$/.test(p) ||
     /\/o\/[^/]+\/f\//.test(p) ||
     p.startsWith('/logo/') ||
     p === '/admin' ||

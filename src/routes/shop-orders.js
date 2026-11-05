@@ -8,6 +8,7 @@ import { proofUpload, discardUploads, sendStoredFile, fileLimits } from '../lib/
 import { isSampleShop, shopFeatures, storageCapBytes } from '../services/billing.js';
 import { unreadShopCount } from '../services/notifications.js';
 import { shopCounts, storageUsed, todoCount } from '../services/shops.js';
+import { billForOrder } from '../services/bills.js';
 import {
   reprintOrder,
   getOrderByNo,
@@ -121,6 +122,7 @@ router.get(`/orders/${NO}`, loadOrder, (req, res) => {
       trackUrl: trackUrl(shop, order),
       canEmail: mailEnabled() && Boolean(order.customer_email) && !shop.is_demo,
       limits: fileLimits({ uploadShop: shop }),
+      bill: billForOrder(shop.id, order.order_no),
     }),
   });
 });

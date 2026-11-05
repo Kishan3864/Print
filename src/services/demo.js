@@ -12,6 +12,7 @@ import { extOf, removeStoredFile } from '../lib/uploads.js';
 import { Canvas, hexRgb } from '../lib/png.js';
 import { DEFAULT_SIZES, hashPassword, removeLogoFile } from './shops.js';
 import { createOrder, addEvent } from './orders.js';
+import { addStarterItems, createBill, listItems } from './bills.js';
 
 const DEFAULTS = {
   name: 'Demo Print Studio',
@@ -400,13 +401,16 @@ export function resetDemo() {
     db.transaction(() => {
       db.prepare('DELETE FROM orders WHERE shop_id = ?').run(shop.id); // files + events cascade
       db.prepare('DELETE FROM files WHERE shop_id = ?').run(shop.id);
+      db.prepare('DELETE FROM bills WHERE shop_id = ?').run(shop.id); // lines cascade
+      db.prepare('DELETE FROM items WHERE shop_id = ?').run(shop.id);
       db.prepare(
         `UPDATE shops SET name = @name, owner_name = @owner_name, city = @city, mobile = '', phone = '', address = @address,
-           brand_color = @brand_color, logo_file = NULL, size_options = @sizes, retention_days = 15, next_order_no = 1001,
+           brand_color = @brand_color, logo_file = NULL, size_options = @sizes, retention_days = 15, next_order_no = 1001, next_bill_no = 1001, bill_settings = '{}',
            password_hash = @hash, is_demo = 1
          WHERE id = @id AND is_demo = 1`
       ).run({ ...DEFAULTS, sizes: JSON.stringify(DEFAULT_SIZES), hash: hashPassword(randomToken(32)), id: shop.id });
       for (const plan of plans) seedOrder(shop, plan);
+      seedSampleBills(shop);
     })();
   } catch (err) {
     for (const name of written) fs.rmSync(path.join(dir, name), { force: true });
@@ -448,7 +452,34 @@ export function seedSampleOrders(shop) {
     files: p.files.map((f) => store(f.name, customerFileBytes(f, 1001 + i))),
     steps: p.steps.map((s) => (s.proof ? { ...s, file: store(s.proof.name, proofBytes(s.proof, 1001 + i)) } : s)),
   }));
-  db.transaction(() => plans.forEach((plan) => seedOrder(shop, plan)))();
+  db.transaction(() => {
+    plans.forEach((plan) => seedOrder(shop, plan));
+    seedSampleBills(shop);
+  })();
+}
+
+// ---------- sample bills ----------
+/** Starter rate list + a few bills (paid, part paid, not paid, one for an online order) dated over the last week. */
+export function seedSampleBills(shop) {
+  addStarterItems(shop.id);
+  const items = Object.fromEntries(listItems(shop.id).map((i) => [i.name, i]));
+  const L = (name, qty) => ({ name, unit: items[name]?.unit || '', qty, rate_paise: items[name]?.rate_paise || 0 });
+  const today = ymd();
+  const plans = [
+    { days: 6, customer_name: 'Anita', lines: [L('Visiting cards (100)', 2), L('Design charges', 1)], pay: 'full', pay_mode: 'upi' },
+    { days: 3, customer_name: 'Sunrise Coaching', lines: [L('Black & white print (A4)', 240), L('Spiral binding', 6)], discount: 4000, pay: 'part', paid: 40000, pay_mode: 'cash', notes: 'Sample bill – class notes, batch 2.' },
+    { days: 2, customer_name: 'Rahul', order_no: 1004, lines: [L('Black & white print (A4)', 172), L('Spiral binding', 2)], pay: 'full', pay_mode: 'cash' },
+    { days: 1, customer_name: '', lines: [L('Passport photos (8)', 1), L('Photocopy (A4)', 12)], pay: 'full', pay_mode: 'cash' },
+    { days: 0, customer_name: 'Arjun', lines: [L('Flex banner', 18), L('Lamination (A4)', 2)], pay: 'none', pay_mode: 'cash', notes: 'Sample bill – pay at pickup.' },
+  ];
+  for (const p of plans) {
+    const date = addDays(today, -p.days);
+    createBill(
+      shop,
+      { bill_date: date, customer_name: p.customer_name, customer_mobile: '', customer_address: '', customer_gstin: '', order_no: p.order_no || null, lines: p.lines, discount: p.discount || 0, taxBp: 0, pay: p.pay, paid: p.paid || 0, pay_mode: p.pay_mode, notes: p.notes || '' },
+      { isSample: true, at: new Date(Date.parse(date + 'T06:30:00Z')).toISOString() }
+    );
+  }
 }
 
 // ---------- personal demo shops ----------

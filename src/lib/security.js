@@ -103,7 +103,10 @@ export function requireShop(req, res, next) {
   if (wantsJson) return res.status(401).json({ error: 'Logged out' });
   // A form posted from a page whose login has ended: back to login, then to that order/page.
   const url = req.originalUrl.split('?')[0];
-  const target = req.method === 'GET' ? req.originalUrl : url.replace(/\/orders\/(\d+)\/.*$/, '/orders/$1').replace(/\/settings\/.*$/, '/settings');
+  const target =
+    req.method === 'GET'
+      ? req.originalUrl
+      : url.replace(/\/(orders|bills)\/(\d+)\/.*$/, '/$1/$2').replace(/\/bills\/items\/.*$/, '/bills/items').replace(/\/settings\/.*$/, '/settings');
   if (req.method !== 'GET') flash(req, 'info', 'You were logged out. Please log in again.');
   res.redirect(303, '/login?next=' + encodeURIComponent(safeNext(target.slice(0, 200))));
 }

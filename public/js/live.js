@@ -16,6 +16,8 @@
   var timer = null;
 
   function editing() {
+    // Forms that build up content (the bill editor) never get swapped under the user.
+    if (document.querySelector('main [data-live-hold]')) return true;
     var el = document.activeElement;
     if (el && el.closest('main') && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !== 'submit') return true;
     var fields = document.querySelectorAll('main textarea, main input[type=text], main input[type=file], main input[type=email], main input[type=tel], main input[type=number]');

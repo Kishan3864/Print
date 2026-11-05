@@ -226,6 +226,63 @@ const MIGRATIONS = [
    );
    ALTER TABLE notifications ADD COLUMN announcement_id INTEGER REFERENCES announcements(id) ON DELETE SET NULL;
    CREATE INDEX IF NOT EXISTS idx_notifications_announcement ON notifications(announcement_id, read_at);`,
+
+  // 6: shop's own bills – rate list (items), manual bills with lines, bill setup (GSTIN, UPI, terms)
+  `ALTER TABLE shops ADD COLUMN next_bill_no INTEGER NOT NULL DEFAULT 1001;
+   ALTER TABLE shops ADD COLUMN bill_settings TEXT NOT NULL DEFAULT '{}';
+
+   CREATE TABLE IF NOT EXISTS items (
+     id          INTEGER PRIMARY KEY,
+     shop_id     INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     name        TEXT NOT NULL,
+     unit        TEXT NOT NULL DEFAULT '',
+     rate_paise  INTEGER NOT NULL DEFAULT 0,
+     created_at  TEXT NOT NULL,
+     updated_at  TEXT NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_items_shop ON items(shop_id, name);
+
+   CREATE TABLE IF NOT EXISTS bills (
+     id               INTEGER PRIMARY KEY,
+     shop_id          INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+     bill_no          INTEGER NOT NULL,
+     token            TEXT NOT NULL UNIQUE,
+     bill_date        TEXT NOT NULL,
+     customer_name    TEXT NOT NULL DEFAULT '',
+     customer_mobile  TEXT NOT NULL DEFAULT '',
+     customer_address TEXT NOT NULL DEFAULT '',
+     customer_gstin   TEXT NOT NULL DEFAULT '',
+     order_no         INTEGER,
+     subtotal_paise   INTEGER NOT NULL DEFAULT 0,
+     discount_paise   INTEGER NOT NULL DEFAULT 0,
+     tax_bp           INTEGER NOT NULL DEFAULT 0,
+     tax_paise        INTEGER NOT NULL DEFAULT 0,
+     round_paise      INTEGER NOT NULL DEFAULT 0,
+     total_paise      INTEGER NOT NULL DEFAULT 0,
+     paid_paise       INTEGER NOT NULL DEFAULT 0,
+     pay_mode         TEXT NOT NULL DEFAULT 'cash',
+     notes            TEXT NOT NULL DEFAULT '',
+     status           TEXT NOT NULL DEFAULT 'issued' CHECK (status IN ('issued','cancelled')),
+     is_sample        INTEGER NOT NULL DEFAULT 0,
+     created_at       TEXT NOT NULL,
+     updated_at       TEXT NOT NULL,
+     UNIQUE (shop_id, bill_no)
+   );
+   CREATE INDEX IF NOT EXISTS idx_bills_shop_date ON bills(shop_id, bill_date);
+   CREATE INDEX IF NOT EXISTS idx_bills_shop_order ON bills(shop_id, order_no);
+
+   CREATE TABLE IF NOT EXISTS bill_lines (
+     id           INTEGER PRIMARY KEY,
+     bill_id      INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+     pos          INTEGER NOT NULL,
+     item_id      INTEGER REFERENCES items(id) ON DELETE SET NULL,
+     name         TEXT NOT NULL,
+     unit         TEXT NOT NULL DEFAULT '',
+     qty          REAL NOT NULL,
+     rate_paise   INTEGER NOT NULL,
+     amount_paise INTEGER NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_bill_lines_bill ON bill_lines(bill_id);`,
 ];
 
 for (let v = db.pragma('user_version', { simple: true }); v < MIGRATIONS.length; v++) {

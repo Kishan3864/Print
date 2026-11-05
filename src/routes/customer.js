@@ -7,6 +7,8 @@ import { discardUploads, orderFilesUpload, sendStoredFile } from '../lib/uploads
 import { acceptsOrders, getShopBySlug, paperOptions, sizeOptions, storageUsed } from '../services/shops.js';
 import { addCustomerVersion, createOrder, customerDecision, getOrderByToken, getOrderFile, latestProof, orderFiles } from '../services/orders.js';
 import { trackPath } from '../services/notify.js';
+import { billLines, getBillByToken } from '../services/bills.js';
+import { sendBillPdf } from '../services/bill-pdf.js';
 import { messagePage } from '../views/layout.js';
 import { closedPage, orderFormPage } from '../views/customer/order-form.js';
 import { trackPage } from '../views/customer/track.js';
@@ -18,6 +20,7 @@ import { trackPage } from '../views/customer/track.js';
 //   POST /:slug/o/:token/approve     approve proof
 //   POST /:slug/o/:token/changes     request changes
 //   GET  /:slug/o/:token/f/:fileId   download / preview a file of that order
+//   GET  /:slug/bill/:token.pdf      a bill the shop shared (PDF)
 // Everything is scoped by the slug's shop and the order's secret token.
 
 const router = Router();
@@ -244,6 +247,18 @@ router.get(`${ORDER}/f/:fileId(\\d+)`, loadShop, loadOrder, (req, res, next) => 
     brandShop: shop,
     action: html`<a class="btn btn-brand" href="${trackPath(shop, order)}">Back to order P-${order.order_no}</a>`,
   });
+});
+
+// ---------- a bill the shop sent (PDF, by its secret token) ----------
+router.get(`${SHOP}/bill/:token([A-Za-z0-9_-]{20,64})\\.pdf`, actionLimiter, loadShop, async (req, res, next) => {
+  const bill = getBillByToken(req.custShop.id, req.params.token);
+  if (!bill) return next('route');
+  try {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    await sendBillPdf(res, req.custShop, bill, billLines(bill));
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

@@ -34,13 +34,14 @@ export function demoBanner(shop) {
  * @param opts.active       active nav key ('orders'|'link'|'settings' for shop; 'demo' etc. for public)
  * @param opts.brandShop    shop row for 'customer' variant (logo, name, brand colour)
  * @param opts.scripts      extra script URLs (e.g. ['/js/shop.js'])
+ * @param opts.styles       extra stylesheet URLs (small per-page CSS, e.g. a shop's bill colour)
  * @param opts.description  meta description
  * @param opts.bodyClass    extra class on <body>
  * @param opts.noindex      add robots noindex
  * @param opts.wide         use wide container for main (shop/admin)
  */
 export function page(res, opts) {
-  const { title = 'Brighton Print', body = '', variant = 'public', active = '', brandShop = null, scripts = [], description, bodyClass = '', noindex = false } = opts;
+  const { title = 'Brighton Print', body = '', variant = 'public', active = '', brandShop = null, scripts = [], styles = [], description, bodyClass = '', noindex = false } = opts;
   const locals = res.locals;
   const demoShop = brandShop?.is_demo ? brandShop : locals.shop?.is_demo ? locals.shop : null;
   // The shop area of a personal demo shop shows its own banner (days left / go live) instead.
@@ -96,6 +97,7 @@ ${variant === 'customer'
 <link rel="preload" href="/fonts/comfortaa/comfortaa-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${asset('/css/app.css')}">
 ${brandShop ? html`<link rel="stylesheet" href="/brand/${brandShop.slug}.css?v=${String(brandShop.brand_color || '').slice(1)}">` : ''}
+${styles.map((s) => html`<link rel="stylesheet" href="${s}">`)}
 <script src="${asset('/js/app.js')}" defer></script>
 <script src="${asset('/js/live.js')}" defer></script>
 ${scripts.map((s) => html`<script src="${asset(s)}" defer></script>`)}

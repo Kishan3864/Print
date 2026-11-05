@@ -9,6 +9,7 @@ import ordersRouter from './shop-orders.js';
 import settingsRouter from './shop-settings.js';
 import billingRouter from './shop-billing.js';
 import supportRouter from './shop-support.js';
+import billsRouter from './shop-bills.js';
 
 // Everything under /shop: login required.
 //   active            full access
@@ -91,5 +92,6 @@ router.use('/', ordersRouter);
 router.use('/', settingsRouter);
 router.use('/', billingRouter);
 router.use('/', supportRouter);
+router.use('/', billsRouter);
 
 export default router;
